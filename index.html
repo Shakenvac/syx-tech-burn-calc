@@ -1,0 +1,1483 @@
+<title>Syx Tech Burn Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control column on the left, verdict + chart on the right, both tech trees in a band underneath. */
+:root{
+  --bg:#e9ecf1; --panel:#ffffff; --panel-2:#f4f6f9; --ink:#1b2130; --muted:#5a6375; --line:#d3d9e2;
+  --clay:#a94b28; --clay-soft:#f3e0d6; --innov:#2c5cc0; --innov-soft:#dfe7f8;
+  --good:#23794a; --good-soft:#dcefe3; --warn:#b06a00; --bad:#a83838; --bad-soft:#f5dede; --haul:#8a7a52;
+  --bar:#9fb3db; --bar-base:#c9d1de;
+  --f-display:"Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#11151c; --panel:#191f29; --panel-2:#1f2733; --ink:#e5e9f0; --muted:#97a1b2; --line:#2c3543;
+  --clay:#dd7b52; --clay-soft:#3a2720; --innov:#7ea2f2; --innov-soft:#1f2b45;
+  --good:#5cc18a; --good-soft:#18301f; --warn:#e8a33d; --bad:#e57a7a; --bad-soft:#3a1f22; --haul:#c2b07f;
+  --bar:#3e5689; --bar-base:#2b3442; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#11151c; --panel:#191f29; --panel-2:#1f2733; --ink:#e5e9f0; --muted:#97a1b2; --line:#2c3543;
+  --clay:#dd7b52; --clay-soft:#3a2720; --innov:#7ea2f2; --innov-soft:#1f2b45;
+  --good:#5cc18a; --good-soft:#18301f; --warn:#e8a33d; --bad:#e57a7a; --bad-soft:#3a1f22; --haul:#c2b07f;
+  --bar:#3e5689; --bar-base:#2b3442; color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:18px}
+img.px{image-rendering:pixelated;image-rendering:crisp-edges}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+
+header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.crest{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px 8px}
+.crest img{width:40px;height:40px}
+header.top h1{font-size:1.75rem;font-weight:700;letter-spacing:.01em}
+header.top p{margin:2px 0 0;color:var(--muted);max-width:62ch}
+
+.grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.panel h2{font-size:1.02rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel h2 img{width:24px;height:24px}
+
+/* Controls */
+.ctl{display:grid;gap:4px;padding-block:10px;border-top:1px solid var(--line)}
+.ctl:first-of-type{border-top:0;padding-top:0}
+.ctl-head{display:flex;align-items:center;gap:8px}
+.ctl-head img{width:24px;height:24px;flex:none}
+.ctl-head label{font-weight:500;flex:1}
+.ctl-head output{font-family:var(--f-mono);font-weight:500;font-size:1rem;min-width:4.5ch;text-align:right}
+.ctl .ends{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted)}
+.ctl.primary{background:var(--innov-soft);margin:-4px -8px 4px;padding:12px 8px;border-radius:var(--r);border:0}
+.ctl.primary output{font-size:1.5rem;font-family:var(--f-display);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--clay);height:24px;margin:0;cursor:pointer}
+.ctl.primary input[type=range]{accent-color:var(--innov)}
+input[type=number]{width:4.2em;font:inherit;font-family:var(--f-mono);padding:2px 4px;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:4px}
+:focus-visible{outline:2px solid var(--innov);outline-offset:2px}
+
+.noble{display:grid;gap:6px;padding-block:10px;border-top:1px solid var(--line)}
+.noble .row{display:flex;align-items:center;gap:8px}
+.noble .row img{width:24px;height:24px}
+.noble label.tick{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;flex:1}
+.noble input[type=checkbox]{width:18px;height:18px;accent-color:var(--clay);margin:0}
+.noble .gran{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.86rem;color:var(--muted);padding-left:32px}
+.linkbtn{background:none;border:0;padding:0;color:var(--innov);font:inherit;font-size:.82rem;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.hint{font-size:.8rem;color:var(--muted);margin:0}
+
+/* Verdict */
+.verdict{border-radius:var(--r);padding:16px 18px;display:grid;gap:6px;border:1px solid transparent}
+.verdict.yes{background:var(--good-soft);border-color:color-mix(in srgb, var(--good) 35%, transparent)}
+.verdict.no{background:var(--bad-soft);border-color:color-mix(in srgb, var(--bad) 35%, transparent)}
+.verdict .tag{font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase}
+.verdict.yes .tag{color:var(--good)} .verdict.no .tag{color:var(--bad)}
+.verdict h3{font-size:1.6rem;font-weight:700}
+.verdict p{margin:0;max-width:70ch}
+
+.alloc{display:grid;gap:8px;margin-top:16px}
+.alloc-bar{display:flex;height:34px;border-radius:5px;overflow:hidden;gap:2px;background:var(--panel)}
+.alloc-bar div{min-width:0;transition:flex-grow .25s ease}
+.seg-lab{background:var(--innov)} .seg-mine{background:var(--clay)} .seg-haul{background:var(--haul)}
+.alloc-legend{display:flex;flex-wrap:wrap;gap:6px 20px}
+.alloc-legend span{display:flex;align-items:center;gap:6px}
+.alloc-legend img{width:24px;height:24px}
+.alloc-legend b{font-family:var(--f-mono);font-weight:500;font-size:1.05rem}
+.sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
+@media (max-width:640px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--panel-2);border-radius:var(--r);padding:10px 12px;display:grid;gap:2px;min-width:0}
+.tile .k{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tile .v{font-family:var(--f-mono);font-size:1.3rem;font-weight:500}
+.tile .s{font-size:.78rem;color:var(--muted)}
+
+.cmp{margin-top:16px;border-collapse:collapse;width:100%;font-size:.9rem}
+.cmp-wrap{overflow-x:auto}
+.cmp th,.cmp td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.cmp th:first-child,.cmp td:first-child{text-align:left;white-space:normal;min-width:11em}
+.cmp th{font-weight:500;color:var(--muted);font-size:.78rem;letter-spacing:.04em;text-transform:uppercase}
+.cmp td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.cmp td:first-child{font-family:var(--f-body)}
+.cmp tr.best td{font-weight:600}
+
+/* Chart */
+.chart-box{position:relative;margin-top:6px}
+.chart-box svg{width:100%;height:auto;display:block}
+.chart-box text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.chart-box .lbl{fill:var(--ink)}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font-size:.82rem;box-shadow:0 4px 14px rgba(0,0,0,.18);max-width:250px;z-index:2}
+.tip b{font-family:var(--f-display);font-weight:600}
+
+/* Tech sliders */
+.research{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:28px}
+@media (max-width:900px){.research{grid-template-columns:minmax(0,1fr)}}
+.ts{display:grid;gap:6px;min-width:0}
+.ts-title{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ts-title h3{font-size:.95rem}
+.ts-title .muted{font-size:.8rem}
+.ts-stage{position:relative;padding-top:74px}
+.bubble{position:absolute;top:0;left:0;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px 6px 6px;box-shadow:0 3px 10px rgba(0,0,0,.12);white-space:nowrap;transition:left .12s ease;max-width:100%}
+.bubble::after{content:"";position:absolute;bottom:-6px;left:var(--arrow,50%);width:10px;height:10px;background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.bubble .nm{font-size:.84rem;font-weight:600;line-height:1.2}
+.bubble .meta{font-size:.74rem;color:var(--muted);line-height:1.3}
+.bubble .opt{font-size:.74rem;color:var(--good);font-weight:500}
+.ticon{position:relative;width:40px;height:40px;flex:none}
+.ticon img{position:absolute;image-rendering:pixelated}
+.ticon .b{inset:0;width:40px;height:40px}
+.ticon .f{left:5px;top:5px;width:30px;height:30px}
+.ticon .o{inset:0;width:40px;height:40px}
+input.tech{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0;cursor:pointer}
+input.tech::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--fill);border:1px solid var(--line)}
+input.tech::-moz-range-track{height:12px;border-radius:6px;background:var(--fill);border:1px solid var(--line)}
+input.tech::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-5px;border-radius:50%;background:var(--panel);border:3px solid var(--innov);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+input.tech::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--panel);border:3px solid var(--innov)}
+.ticks{position:relative;height:30px;margin:0 10px}
+.ticks span{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center}
+.ticks span::before{content:"";width:1px;height:6px;background:var(--muted)}
+.ticks .ticon{width:24px;height:24px;margin-top:2px}
+.ticks .ticon .b,.ticks .ticon .o{width:24px;height:24px}
+.ticks .ticon .f{left:3px;top:3px;width:18px;height:18px}
+.ticks{height:34px}
+.ts-foot{display:flex;justify-content:space-between;gap:10px;font-size:.78rem;color:var(--muted);flex-wrap:wrap}
+.ts-foot{align-items:baseline}
+.ts-foot b{font-family:var(--f-mono);font-weight:500;color:var(--ink)}
+.ts-foot b.spend{font-size:1.2rem;font-weight:700;padding:1px 7px;border-radius:4px;margin-left:2px}
+.spend.k{color:var(--innov);background:var(--innov-soft)}
+.spend.i{color:var(--clay);background:var(--clay-soft)}
+.spend.g{color:var(--good);background:var(--good-soft)}
+.info{position:relative;display:inline-flex}
+.info button{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font:600 12px/1 var(--f-display);cursor:help;padding:0}
+.info button:hover,.info button[aria-expanded="true"]{color:var(--panel);background:var(--innov);border-color:var(--innov)}
+.info .pop{position:absolute;top:28px;left:50%;transform:translateX(-50%);width:min(340px, 80vw);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,.2);font-size:.84rem;line-height:1.5;color:var(--ink);z-index:5;display:grid;gap:6px}
+.info .pop p{margin:0}
+@media (max-width:640px){.info .pop{left:auto;right:-40px;transform:none}}
+.key{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.key span{display:flex;align-items:center;gap:6px}
+.key i{width:14px;height:10px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
+
+details.notes{font-size:.86rem;color:var(--muted)}
+details.notes summary{cursor:pointer;color:var(--ink);font-weight:500}
+details.notes ul{padding-left:18px;margin:8px 0 0;display:grid;gap:4px;max-width:90ch}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* Tabs */
+.tabrow{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--line)}
+.tabs{display:flex;gap:6px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding-top:2px}
+.edbox{flex:none;width:260px;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:var(--r) var(--r) 0 0;padding:6px 12px 2px;margin-bottom:-2px;position:relative;z-index:1}
+.edbox .ctl-head{gap:6px}
+.edbox .ctl-head img{width:22px;height:22px}
+.edbox .ctl-head label{flex:0 1 auto;font-size:.9rem}
+.edbox output{margin-left:auto;font-family:var(--f-mono);font-weight:500}
+.edbox input[type=range]{height:22px}
+.vb.n{background:var(--muted);margin-left:2px}
+@media (max-width:700px){.tabrow{flex-wrap:wrap}.edbox{order:-1;width:100%;border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}}
+html.phone .tabrow{flex-wrap:wrap} html.phone .edbox{order:-1;width:100%;border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}
+.tabs button{display:flex;align-items:center;gap:8px;border:1px solid transparent;border-bottom:0;background:none;padding:8px 14px;border-radius:var(--r) var(--r) 0 0;
+  font:600 .95rem var(--f-display);color:var(--muted);cursor:pointer;white-space:nowrap;margin-bottom:-2px}
+.tabs button img{width:24px;height:24px}
+.tabs button b{color:var(--muted);font-weight:500}
+.tabs button[aria-selected="true"]{background:var(--panel);border-color:var(--line);color:var(--ink);border-bottom:2px solid var(--panel)}
+.tabpanel{display:grid;gap:18px}
+html.phone .tabs button{padding:8px 10px;font-size:.84rem}
+html.phone .tabs button img{width:20px;height:20px}
+
+/* City-wide strip above the tabs */
+.citygrid{display:grid;grid-template-columns:minmax(0,560px);gap:4px 28px}
+.climico{display:flex;gap:8px}
+.climico button{width:52px;height:52px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);cursor:pointer;padding:0}
+.climico button img{width:32px;height:32px;image-rendering:pixelated}
+.climico button[aria-pressed="true"]{border:2px solid var(--innov);background:var(--innov-soft)}
+.climico button:not([aria-pressed="true"]) img{opacity:.55}
+.citygrid .ctl{border-top:0;padding-block:0}
+.citygrid .hint{margin-top:2px}
+@media (max-width:700px){.citygrid{grid-template-columns:minmax(0,1fr);gap:14px}}
+html.phone .citygrid{grid-template-columns:minmax(0,1fr);gap:14px}
+
+.col{display:grid;gap:18px;min-width:0;align-content:start}
+
+/* Shared bits for the leather and paper tabs */
+.toggles{display:flex;flex-wrap:wrap;gap:10px}
+.tgl{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;cursor:pointer}
+.tgl input{width:18px;height:18px;accent-color:var(--innov);margin:0}
+.tgl .nm{font-size:.86rem;font-weight:600;line-height:1.2}
+.tgl .meta{font-size:.74rem;color:var(--muted)}
+.research.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.research.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:900px){.research.three,.research.two{grid-template-columns:minmax(0,1fr)}}
+.climate{display:flex;gap:6px;flex-wrap:wrap}
+.climate button{flex:1;border:1px solid var(--line);background:var(--panel-2);border-radius:6px;padding:6px 8px;font:inherit;font-size:.86rem;color:var(--ink);cursor:pointer}
+.climate button[aria-pressed="true"]{background:var(--innov);border-color:var(--innov);color:var(--panel)}
+.byp{margin-top:16px;display:grid;gap:8px}
+.byp .row{display:flex;align-items:center;gap:10px;background:var(--panel-2);border-radius:var(--r);padding:8px 12px;font-size:.88rem}
+.byp .row img{width:24px;height:24px;flex:none}
+.byp .row .v{font-family:var(--f-mono);font-weight:600;font-size:1.05rem;margin-left:auto;white-space:nowrap}
+.byp .row.plus .v{color:var(--good)} .byp .row.minus .v{color:var(--bad)}
+.byp .row .t{min-width:0}
+.byp .row .t small{display:block;color:var(--muted);font-size:.76rem}
+.numin{display:flex;align-items:center;gap:8px;font-size:.88rem}
+.spend.z{color:var(--muted);background:var(--panel-2)}
+.advice{display:flex;gap:12px;align-items:flex-start;border-radius:var(--r);padding:10px 12px;border:1px solid var(--line);background:var(--panel-2);max-width:760px}
+.advice.yes{border-color:color-mix(in srgb, var(--good) 45%, var(--line));background:var(--good-soft)}
+.advice .nm{font-weight:600;font-size:.9rem}
+.advice .meta{font-size:.86rem;margin-top:2px;line-height:1.45}
+.pay{display:grid;gap:8px;margin-top:14px}
+.pay:empty{display:none}
+.payrow{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-size:.88rem;color:var(--muted)}
+.payrow .lbl{color:var(--ink);font-weight:600;flex-basis:100%}
+.payrow b.spend{font-family:var(--f-mono);font-size:1.15rem;font-weight:700;padding:1px 7px;border-radius:4px}
+.payrow .arrow{font-size:1.1rem}
+.payrow .per{margin-left:auto;font-size:.8rem}
+
+/* View toggle (always visible) */
+.viewbar .ver{flex-basis:100%;text-align:center;font-size:.76rem}
+.viewbar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;font-size:.84rem;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:none;padding:6px 12px;font:inherit;color:var(--muted);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--innov);color:var(--panel)}
+
+/* ---------- Phone mode: everything below applies only with html.phone ---------- */
+.mbar,.stepper,.wstep{display:none}
+html.phone body{padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
+html.phone .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;align-items:center;gap:10px;
+  background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,.15);
+  padding:10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.mbar .mv{flex:1;min-width:0;display:grid;line-height:1.2}
+
+/* Claude's worth-it badges and their tooltip */
+.vb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font:700 11px/1 var(--f-display);color:var(--panel);cursor:help;vertical-align:middle;margin-left:6px;flex:none;user-select:none}
+.vb.g{background:var(--good)} .vb.o{background:var(--warn)} .vb.r{background:var(--bad)}
+.vtip{position:fixed;z-index:30;max-width:min(320px, calc(100vw - 24px));background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.22);padding:10px 12px;font-size:.84rem;line-height:1.5;pointer-events:none}
+.vtip b.h{display:block;font-family:var(--f-display);font-size:.92rem;margin-bottom:2px}
+.vtip .g{color:var(--good)} .vtip .o{color:var(--warn)} .vtip .r{color:var(--bad)}
+.vtip small{display:block;color:var(--muted);margin-top:4px}
+.mbar .tag{font-family:var(--f-display);font-weight:600;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}
+.mbar.yes .tag{color:var(--good)} .mbar.no .tag{color:var(--bad)}
+.mbar .big{font-family:var(--f-display);font-weight:700;font-size:1.15rem}
+.mbar .split{display:flex;gap:8px;font-family:var(--f-mono);font-size:.9rem}
+.mbar .split span{display:flex;align-items:center;gap:2px}
+.mbar .split img{width:22px;height:22px}
+.mbar a{font-size:.78rem;color:var(--innov)}
+
+html.phone input[type=range]{height:36px}
+html.phone input.tech{height:40px}
+html.phone input.tech::-webkit-slider-runnable-track{height:14px;border-radius:7px}
+html.phone input.tech::-webkit-slider-thumb{width:30px;height:30px;margin-top:-9px}
+html.phone input.tech::-moz-range-thumb{width:24px;height:24px}
+html.phone input[type=range]:not(.tech)::-webkit-slider-thumb{transform:scale(1.4)}
+html.phone .ticks .ticon{width:18px;height:18px}
+html.phone .ticks .ticon .b,html.phone .ticks .ticon .o{width:18px;height:18px}
+html.phone .ticks .ticon .f{left:2px;top:2px;width:14px;height:14px}
+html.phone .bubble{white-space:normal;width:max-content;max-width:100%}
+html.phone .ts-stage{padding-top:84px}
+.tap{display:none} html.phone .tap{display:inline} html.phone .hov{display:none}
+html.phone .stepper{display:flex;gap:8px;justify-content:space-between;margin-top:4px}
+.stepper button,.wstep button{min-width:44px;height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--ink);font:600 1.1rem var(--f-display);cursor:pointer;padding:0 12px}
+.stepper button{flex:1;font-size:.9rem;font-family:var(--f-body)}
+html.phone .wstep{display:flex;gap:8px;margin-top:4px}
+html.phone .wstep button{flex:1}
+
+html.phone .chart-box text{font-size:12px}
+html.phone .tip{max-width:min(260px, 80vw)}
+
+html.phone .cmp thead{display:none}
+html.phone .cmp,html.phone .cmp tbody{display:block;width:100%}
+html.phone .cmp-wrap{overflow:visible}
+html.phone .cmp tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
+html.phone .cmp tr.best{border-color:var(--good)}
+html.phone .cmp td{border:0;padding:0;text-align:left;display:flex;justify-content:space-between;gap:8px;white-space:nowrap}
+html.phone .cmp td:first-child{grid-column:1/-1;font-weight:600;white-space:normal;min-width:0}
+html.phone .cmp td::before{content:attr(data-label);color:var(--muted);font-family:var(--f-body);font-size:.8rem}
+html.phone .cmp td:first-child::before{content:none}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="crest"><img class="px" data-ic="lab" alt=""><img class="px" data-ic="library" alt=""><img class="px" data-ic="admin" alt=""></div>
+    <div>
+      <h1>Syx Tech Burn Calculator</h1>
+      <p>Songs of Syx: is it worth feeding clay, leather or paper to your tech rooms, or should those workers just staff the rooms? Values come from the game's own data files.</p>
+    </div>
+  </header>
+
+  <div class="tabrow">
+  <nav class="tabs" role="tablist" aria-label="Calculator">
+    <button role="tab" data-tab="clay" aria-controls="tab-clay"><img class="px" data-ic="clay" alt=""><span>Clay <b>→</b> Labs</span></button>
+    <button role="tab" data-tab="leather" aria-controls="tab-leather"><img class="px" data-ic="leather" alt=""><span>Leather <b>→</b> Libraries</span></button>
+    <button role="tab" data-tab="paper" aria-controls="tab-paper"><img class="px" data-ic="paper" alt=""><span>Paper <b>→</b> Admin</span></button>
+  </nav>
+  <div class="edbox" aria-label="Education, applies to every tab">
+    <div class="ctl-head"><img class="px" data-ic="innov_book" alt=""><label for="ed">Education</label><span class="vb n" tabindex="0" role="img" aria-label="About education" data-tip="<b class=&quot;h&quot;>Education · applies to every tab</b>Multiplies innovation, knowledge and admin. It doesn't burn more clay, leather or paper. Increasing it tends to make burning resources a better proposition.<small>×1.00 uneducated, ×2.00 fully educated.</small>">i</span><output id="ed-o" class="num"></output></div>
+    <input type="range" id="ed" min="1" max="2" step="0.05" value="1" aria-label="Education">
+  </div>
+  </div>
+
+  <div class="tabpanel" id="tab-clay" role="tabpanel">
+  <section class="panel" aria-label="Research">
+    <h2>Research</h2>
+    <div class="research">
+      <div class="ts">
+        <div class="ts-title"><h3>Laboratory tech</h3><span class="muted">Science tree, paid in knowledge</span></div>
+        <div class="ts-stage" id="ts-lab"></div>
+      </div>
+      <div class="ts">
+        <div class="ts-title"><h3>Claypit tech</h3>
+          <span class="info"><button type="button" id="clay-info-b" aria-expanded="false" aria-controls="clay-info" aria-label="What is the kept clay tech level?">i</button>
+            <span class="pop" id="clay-info" role="tooltip" hidden>
+              <p><b>Clay tech you'd keep anyway.</b> At 0, the calculator assumes clay tech is only there to feed your labs. If the answer is "Skip clay", you'd refund all of it.</p>
+              <p>If you'll keep some clay tech whatever happens, for example for pottery, bricks or trade, set that level here. Its cost then counts as already paid. That can only help clay, and it can make clay worth burning when it otherwise wouldn't be.</p>
+              <p class="muted">Only set a level you'd really keep without the labs. Otherwise clay looks better than it is.</p>
+            </span>
+          </span>
+          <span class="muted">Mines tree, paid in innovation. Set the level you'd keep anyway.</span></div>
+        <div class="ts-stage" id="ts-clay"></div>
+        <div class="key">
+          <span><i style="background:var(--innov)"></i>Kept anyway (already paid)</span>
+          <span><i style="background:var(--good)"></i>Worth researching for clay</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <aside class="panel" aria-label="Settings">
+      <h2>Your city</h2>
+
+      <div class="ctl primary">
+        <div class="ctl-head"><img class="px" data-ic="lab" alt=""><label for="w">Workforce to assign</label><output id="w-o" class="num"></output></div>
+        <input type="range" id="w" min="0" max="1000" step="1" value="500">
+        <div class="ends"><span>10</span><span>400</span><span>2,000</span></div>
+        <div class="wstep"><button type="button" data-d="-1" aria-label="Fewer workers">−</button><button type="button" data-d="1" aria-label="More workers">+</button></div>
+      </div>
+
+
+      <div class="ctl">
+        <div class="ctl-head"><img class="px" data-ic="lab" alt=""><label for="rl">Lab race bonus</label><output id="rl-o" class="num"></output></div>
+        <input type="range" id="rl" min="0.8" max="1.25" step="0.01" value="1">
+        <div class="ends"><span>×0.80 Garthimi</span><span>Human ×1.25</span></div>
+      </div>
+
+      <div class="ctl">
+        <div class="ctl-head"><img class="px" data-ic="mine" alt=""><label for="rm">Claypit race bonus</label><output id="rm-o" class="num"></output></div>
+        <input type="range" id="rm" min="0.75" max="1.25" step="0.01" value="1">
+        <div class="ends"><span>×0.75 Tilapi</span><span>Garthimi ×1.25</span></div>
+      </div>
+
+      <div class="ctl">
+        <div class="ctl-head"><img class="px" data-ic="clay" alt=""><label for="dq">Clay deposit quality</label><output id="dq-o" class="num"></output></div>
+        <input type="range" id="dq" min="90" max="110" step="1" value="100">
+        <div class="ends"><span>90%</span><span>110%</span></div>
+      </div>
+
+      <div class="ctl">
+        <div class="ctl-head"><img class="px" data-ic="cart" alt=""><label for="lo">Logistics overhead</label><output id="lo-o" class="num"></output></div>
+        <input type="range" id="lo" min="0" max="50" step="1" value="10">
+        <div class="ends"><span>0%</span><span>50% extra haulers per miner</span></div>
+      </div>
+
+      <div class="noble" id="nb-lab"></div>
+      <div class="noble" id="nb-mine"></div>
+    </aside>
+
+    <div class="col">
+    <main class="panel" aria-live="polite">
+      <div id="verdict" class="verdict"></div>
+
+      <div class="alloc">
+        <div class="alloc-bar" id="alloc-bar" role="img" aria-label="Workforce split"></div>
+        <div class="alloc-legend" id="alloc-legend"></div>
+      </div>
+
+      <div class="tiles" id="tiles"></div>
+
+      <div class="cmp-wrap"><table class="cmp" id="cmp"></table></div>
+    </main>
+
+    <section class="panel" aria-label="What more research would buy">
+      <h2><img class="px" data-ic="innov_book" alt="">What more research would buy</h2>
+      <p class="hint">Extra innovation from more lab tech, at your current settings, with workers and clay re-split for the new tech. The knowledge cost stays tied up for as long as you keep the tech.</p>
+      <div class="cmp-wrap"><table class="cmp" id="clay-more"></table></div>
+
+      <h2 style="margin-top:22px"><img class="px" data-ic="innov_book" alt="">Gain over all labs, by clay tech researched</h2>
+      <p class="hint">Each bar is the best split of your workforce at that clay tech level, after paying for clay tech above the level you keep anyway. Bars above the dashed line beat putting everyone in labs. <span class="hov">Hover over</span><span class="tap">Tap</span> a bar for details.</p>
+      <div class="chart-box" id="chart"></div>
+    </section>
+    </div>
+  </div>
+
+  <section class="panel">
+    <details class="notes">
+      <summary>How the numbers are worked out</summary>
+      <ul>
+        <li><b>Innovation is a standing total</b>: the labs hold it at a level set by their workers, and tech costs are held out of it (or out of knowledge) for as long as you keep the tech.</li>
+        <li><b>Clay tech kept anyway</b>: clay tech you'd keep for other reasons (pottery, bricks, trade) counts as already paid. At 0, all clay tech is charged to the labs. Clay tech costs and gains are both innovation, so the calculator picks the best level exactly.</li>
+        <li><b>Lab output per worker</b> = (1 + upgrade [+50% / +100%] + tools [+25% per level] + Laboratory efficiency [+40% per level] + experience + noble) × race. Clay in stock doubles the whole room (×2).</li>
+        <li><b>Education</b> (×1 to ×2) multiplies the city's total innovation, not the lab room itself, so it adds innovation without burning more clay. Clay tech costs stay the same, so a more educated city gets more for each point spent.</li>
+        <li><b>Lab tech slider order</b>: the lab tree branches, so the slider uses the best-value order per knowledge spent: Improved Laboratory, Laboratory Tools 1, Advanced Laboratory, Laboratory Efficiency 1–5, then Laboratory Tools 2. Tools 2 gives the least per point, so it comes last. The one state the slider can't show is Tools 2 taken before Advanced Laboratory. The clay tree is a straight chain in the game.</li>
+        <li><b>Clay burned</b> = 0.75 per lab worker per day × that worker's full output, including the ×2. Better labs burn more clay.</li>
+        <li><b>Claypit output</b> = 1.5 clay per miner per day × deposit (0.9 to 1.1) × (1 + clay techs + upgrade [+100% / +200%] + tools [+25% per level] + experience + noble) × race.</li>
+        <li><b>Experience</b>: labs gain up to +250% as lab workers rise from 50 to 2,000. Claypits gain up to +100% from 50 to 1,000. Worked out from the split shown.</li>
+        <li><b>Noble office</b> ("Master of …"): +250%. With the tick alone it covers every worker. Add a count and rank to apply the game's cap of 50 × (1 + 2 × rank) workers per noble.</li>
+        <li><b>Tools</b> are assumed fully stocked once researched. <b>Haulers</b> = miners × logistics overhead, rounded up. If clay runs short, only that share of the labs gets the ×2.</li>
+        <li><b>ⓘ verdicts</b> on lab tech convert its knowledge cost at about 1 admin ≈ 1.4 knowledge ≈ 1.9 innovation: what each point costs in workers once the rooms are well researched. Green is 1.25× or better, orange 0.8–1.25×, red below 0.8×.</li>
+        <li><b>Not modelled</b>: room degradation, workload and distance penalties, tool wear and maintenance, the furniture and resource costs of building upgrades, and flat bonuses such as city rank (they add the same with or without clay, so they don't change the answer, but the percentages leave them out).</li>
+      </ul>
+    </details>
+  </section>
+  </div>
+
+  <div class="tabpanel" id="tab-leather" role="tabpanel" hidden></div>
+  <div class="tabpanel" id="tab-paper" role="tabpanel" hidden></div>
+
+  <div class="viewbar">
+    <span>View</span>
+    <span class="seg" role="group" aria-label="Page layout">
+      <button type="button" data-view="auto">Auto</button>
+      <button type="button" data-view="desktop">Desktop</button>
+      <button type="button" data-view="phone">Phone</button>
+    </span>
+    <span id="view-note"></span>
+    <span class="ver">v1.0 · built from Songs of Syx 0.71.90 game files</span>
+    <span class="ver">Unofficial fan tool. Game data and icons © the Songs of Syx developer.</span>
+  </div>
+</div>
+
+<div class="mbar" id="mbar" aria-live="polite"></div>
+
+<script>
+const IC = {"lab": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAIQklEQVR4nMWXyY8kRxXGfxGRa2VmLd09PVvPhmfG2OIAQiAsgXxC4gASIE6AjH3CBw78AZy4Yom/gRMSksUBGZCRERIySCBjG4xhsAd7epae6a32ysolIlBEDVa3oefqlFJVkUu89773vfe9hI/4EEcXlx/7BB976ofkvMtXv/RJqrphox/w5tu37Pkzm5w6dYrHr18gVMq/eX93yHw+52B/yHQ+J8u6LBZLdNty6/YdPvOp6+Ld7T3K6T4/f/FnCCmRMuCvf/ndBzaDow5orfnGF7eIZIa1FqylblrvZ7+XEUcBdd3Qypask1DkCVknIlCCbJ4wndbMFzOGowmHwyF1UyOEIO4M+N73f8CNGzf4za9ePIZAcHTx/PPfxVgwxjlTARKjDXEY0LQtZbVksSgJwsBvPBpOsAKGoxEHB4cEQQdjNL1uTtvU3L67x7ysUCpkMrrHzZs30G7zkxywPmr3z6C1oa4qpBBMZ3N/P01TiiL3xq01aBRNrTEk9Afn/Pu1hrZuKIqMNFYsSojCmOl4h7f/9mefgpMdMCsHnA/COiMW0xqyNBC7e0P7/vYdXn/dIFXgIzTGUpUls9mUpJMRqBClFK1uWR8kIoq6CBWSrj3BcjmmakOkDE92wFiLFcYbDsIIqoqtrQ2U0pw7e1ps35vbMBCcPXuOw9GY7dv3aVrJYD3yqVtbO0MSh3ztK58Xk/HU7/frV970EdVV6yjlrx095NHFCy/8iEWlmTQ9xnUXbRXXr17i6S98lqc+92niJPXwS6n8hmkSECrjybksS+bzKWuDHre2d8jznCzLSbMByJRASY+Y49SJDlx/+sf+V0mJkoKouMpv/7DNxvrGCiEj0L44BEWREkeRT9dsVvH2O0OPgpSS+XxJqw2/fOXvLrFILP1zT/Hcc8/ynWefOdmBb335MpES/gV3KunOFSdW/LQIC1W9pFy2HE5KLmydRVvBE9c3MVb4Wr+zc4h20VpwAbv75r8pflQKcA8gVgYfXlqaNV58ecdvrkSDlBpBQxQFdPMON9/fQ3tYhC/fpnEV5PqH8ZCX1jm2Qs31ExfayVXAw1CBkAXKtAhhCQnR+jTzsiENa7ANSajIU+gVirENyDoh1lbMZkPOnF7jpd9PeOmPETDyhuv5Ae//6acfbr4cc+AnP9s+dlslA0+4OFK8+sYt/v3OhNObBY9fi7hzULC9HdHqDQLZMJ+XPvJ+EfLMN5/kFy+/R9OoD5BMwpSkcwVr9ckpkJ7hEiFASAeWoJMoAtXyr3++xZItTp/7OLce9MBKtJVc2YqZLSyaDmfPrKGN4I1/HPhO6t6XchXSfNEipOugj0gB/lnjS62TJQRRgDENwt0Q0vaLlMNxxfUrGbuHDUpJbm4b0jQmTQUqVFgR8vpr71lTV0JGm0gXoxRYqRDSidjxFMhj9r2d1ekWTeOiAF3tEOdbXLzY87XvPF3vhxRZTJZZNjcjrK7YP5iQdgK6vYI8nmHaCotBWkdtV6KRw+RRDgh/OqWrq9JHaJr7rsXaIkswuuXalQ5ZKqhq7VOmZEDk2m3ysM0KwXDSIuNNq5tddFtihfai5RBwnDrRAQR0OinLuiKKM49ImnbIB5dYX0/p9QKSWKGU0wlFGCtqLRjPNFXjtB7KsqWpKxoTkOdO1luvkLqZP4SYR5EQllVJnOSEYUyRTOlvbNlTawlZHnD5fMqTj2WefGmqSGLJ5Ysps4VmWbm5wXDmVEKvq9CtJsm6Fj2ibUpUNGBw4eusX/n2yQ6UDURRjlIBut7x3OmkIVke0tSGtX7sZJKsEzCa1sSJZDisvTQva+OdcNeb1onaCo0oSa1p9mnrmZ+UjH3EPIAji2u91T2XLxt0zpHnEUUWcnYz5uL5lMmsZVpqGhMSBIZ+P151v9ayuRbx7nYJViFwxpw4pNhAWtoDoe0AITsnI9AtOtA8QFtrz5y/RhpJqkqzsRZz7VJGqOCtG2MvVG7PB3std3YaOp2AMITdQ0MYSooiRkjXBSHPU5yEa41t6z2qcvIIEra7TiysSi/SSQIuXuj5zbKOolsE7A0bojhid3/uYc47gkFhqSvD4bghjgPm84rdvSnraylJEntHHfGs7Dq9sB9OgTy6MGZpg/QCWRp5tjsEr17OuHAm8R3y9oOSxnVSIX0pRhGkiUIKTSdWtE1Dr4jJ84T9g9Kj5waUy+fX0aZFyy6m3bf/1wHr8q9cjhRtawkiN+1Kn9u7D5a8+tqQ/YOanftzlkvjSRkGeN130pskAWtrqVfNtUGKI6+Tt7sPFswXFb1egdUaRHJMkoOj3oxGewyCDYyG7bsjrl7qM5k1foppjWA01l5cRmM3NTfUyyVJqlCBZP+gYjSpvOzu7S9YLA3dImWxrBnPDINewXA4BnG8EQVHF1n3giMLUrmRy5Gs8lPQ6ttAMp4JQmXZP2z8cOJq/XCypG2XXgmzLMS6oUDCtK0ZDltv0DX0w4Nd6mpGp9M/2QEpXElVFHnqVcxBO523/ptgNrN+CNnbqz20/UHMzs6Ubh5xWLoyNCyXjc/16pvGEASR/8iwtqRyjSnp+esnOrBYjAmTgnv33qPonmY6KX1fiKIUa2uqyimgwhjDbLYyNBzOvMZnyUpoxnPhe4frisNRiRILGutq38m6/p+hNDi6UGEurNY2jLtUdUldQ1WOyPIBRd6hqmr63YjheLFq6bZ9+A1hGC5mD4cPy8HS+KpBxGgdgGj8ZGX1Em20OLkT4jcQxg95oNsaN5DNZ2PKxYQgkOzt+fFyNcCZxjPaIeB/3ShrDcYGGGeQuZ8CvUUhicJAbJ07zoGP/PgPSztZm+gWDugAAAAASUVORK5CYII=", "library": "data:image/png;base64,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", "innov_book": "data:image/png;base64,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", "admin": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFQUlEQVR4nL2Xa2wUVRTHf7M7+2y73e0upcWKAsVCBcGgjWIUsRHUpEa/GIPKB6OfjBohRImoCSLRRHxilAhqBVFDMPiIgcSARJ6aEOSRCj54lLa73e3O7szu7O68rtlFCQZC6Mv/h5mbyTn3/7/n3nvOGYn/Ads+Wyqmt91NsaQiCkX2HOxCVbrJaQXk0SSOH/9O6Mj8/stOpEIKzACdX35Ga8sUpk0dX7GRR4M48fsWsfXr77FML+RVps+8mffeX0dtoIpZM1qJjgmxe/cRnn15veQaKdKeXz8VlffhL4SQZCSXQFgF/EGH11etwV/t4drWZqL1PmzTqpCX7UckAgvvv6VCvqlzqRBOAN0s0D5vPpqq0blhE7e2z8QsFKiKebENmNPxfIV8RAT0HOwUy975BJcrSMvEa3AFIOgZy8vLX6TpyjFcN3sSiVO9pEsavxzooqSp//GXh0O+68slQrjCVKkOthcisXpc/nG8+e5rtLffBlUOdbKfcdPrzvnM6VgmjYiAHzc8LTy+IJ4qmcceuhFJDuL2jOWV5xZx07xZ2G6LSMmmP5PF0s2Kz4InPvgP+ZAFbHx9gWhsvYWeYwcwcwaBWDNGycuHq5Zzw03TSf51ivr6OjxXXUlTZGzFZ/b8RReQD1mAlPOi63HGT55GPJ2mOtDEpo2fMmPmRHw+D1dPmFGx83gDgGD2/MUXJS9j0New99f1Qo64qK1twuuLkFNUVr/3Ki0tjTQ01iGKCod/3k3vyRP0n/7jkuSVxQxWwPH9G0Uu20c8aTJpfDOr175Fa/MUQmEJSYLwFRHCgYaK7ey7Lh72IQvoO7ReqHEHf1OMM6cTbPh4HXPmtdEQq0WS3JSTgddXdck9H9YZkOQIydIxJgZb2dC5kjl3ttFQX0df9xkKuRzdcRW3CX/GU5c/J4PAz9+sFnnJxZbNXzG3/XrUVAqBoHnqNKR/svrlrnxQAj5a84aYf9tkMmqON1au4p775hKLhRCVBHwWt9/7wqDP02ULKKOn61vx+bpOohOaoJhGOM4590eXnC0sQ4F8uYZH9hzG43iIH+9i6dvbhkw4JAFvLn9cpCyFXUfjbNq2Y8TILylg2TMrxP59R9DyKSZNaGTFiq1MnNDCSMN1sY/bN+8Qyf4EBSPLrOsbWbN2H4bkpzeZZEHHwvOO3ihFwHIMFi96Ckm2OXHyBD7Zw9FDXRz77S+SAwOjHwFJEuT1LFbJxF1uLhNJNFXFsG1kr3d0BTzQ8ZDQtDxut5uBrEI2p+OWJHzBKnx+N0LYzG27c8S2Qfp3sPbttWJ8YyP9vSm8AQ+RcfXINqSyA2jZHN2n+hjIKGh5DSWdQXK7SKdT7Nz/w7BuhVR+vPT0SnH7HW00T5nMwEAaJZHiZLyHQt5AOBbpdIZMOouWUzFNG8exMUwDwyqiKBrb924dXiJqHBdDDnjRSzrhaC3haJgxTQ2k+lMoSpaAP0AwGKCYD6NkMhSLOkrWwCjauAZf0S8U4PX7yo0LqpLBK3vx+vyVTiZUU0OhUER2S9RWhcCxqHPVkoiXKsQul4Rti+EL6I8nCYeqidRV4wn4EUoWIbsxdRMjX0JyJCzLxkFgFgUODuW1l8tB+Qdk2ALUrEb36T5KRpTaUA05XccX8JHL5nG7IKupOJgU9RKl8t6bYAsby3SwnbMd71Ah/Tt48pFnRF0sSiQSJhSpqRCbloWu5SjmCmj5HJYpSA0oFEtFEqkkWT3D/oM/Df8WnI8HOx4W0ZooskemOhSkVDArTUdBL2DYRkVAIt3D3gO7RqQo/Q1uWEsaR91MwQAAAABJRU5ErkJggg==", "mine": "data:image/png;base64,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", "hunter": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAK0ElEQVR4nIWXfYycx13HPzPzPPs8u3sve7f3fvZd7Dvb58QODcExVIRAmqgKjWiANoL8kwhVaSlqFVABgcCkJIVAGqehlNI2bVokQhJaaFpBoeA0tmMndWI7sZzYOdtn+/bu9l733vb1eeZ5Bj2zvpNSIZjV7Mzszm/m9/v+Xkcc/Pg9pnv3XkZ37hVRHGGALT29JO273/ibZCnu+a1P85Pt5UP/ZowOxe0fvGfzt5nFBS6+c8rEWrN6dUJ8+H+h+8nmRCYSjWrFXLp0zkjliKC6Zi6eRwSrq6E2sRCAclyEEBiDHZMmUymhdWi+8/WnRH5kp2UUMHEYIJQSoYmRjvuey5pnmM0zkrkTxjHzE+9a4taOvGntG6S+UkJK6eg45m8nTpgnf//Xka7ktcdfbFImmzFIzyM/OkYcR8xfPG827mmyAo6b+n8RkJExpqWzy3Rv34Wf6ySTy9M+OGzcljb6x2404UqE1+XRs19y6yMfMbf87q+YqdkiUYJPbIii0MxcOIc2Bh0b2nr6Te/obtPW22+e+cKfWxT+r+7oyIil+TnD/LxI2C6XSma1NE+2PUfPtp188lc/zN9970WEyjbFAs68fsTMXDhv1519/WRzedZKixadheKUoTi9iVSivmvauTY28cOqwSCjOKZ3aLvoGRqmrbvHLC3O8bXJU3z+9f9i/NQJWksBd++/mVqhZun+5Oc/yuT4O2gT88U3X2V+dkaUluaTtcn19tHSkRfJmUn/h7Wz5hcevstI10G6icTJuDF3kSqF+NKffTIxBjN9+ZLl8dn5M5ZRkVbU5xs8etvdFIprrKYUnSuShrfC/t3DPPj976CrGr/L5/6B922IuGkFz1fPGZQgnTHUVgRmPebkM4c3kdmYiNXZyU26PfffYlTW4XO9N9t1ZmuPReqmPXsZn1uhK9W04CtTU/b/6uTcpnmfWa/Y6bMLZ41qVShfkoyduYDlCQdpDA3g1FPHxHuMUKoECpe99/6ccX0HpQQHFk5ZF6lMzvH0v5wmri2xd6iH9lwnj3zpB1Suztqe7Hno5FE+/erLJjHAF/R543Q6qIyib2tAuKBZXVT07WxAhyDWMTd+bL9RjoPtrouolOabkCMYu+9GI9MKJ63Q1cjCdHDfXbzvpgEOPPoSn/ntOy3XZ4++zkOnXsFoyAymkdMK0Q5qWDJ8Q8D0ZJpwReNloL5scFoUQgp8X7M+azj79JubKMimMbgI5eBIB6kE3UMaJDg5x/r76dPT/Nrdu5goTHKluMB4oQQh9N2UQQqBs0VCp0GlBIXxFI13Q0RG0DMc0jUSo8uaXL5BuQRSKPbce5ORSmH7hgp2/cb1Rsc6CU8szqdwMwoj4A/e+W9Wl+s2Cq5VNScOnWTrUBdGGOpXoLuSAQcy/ZJMu2brWIjaKolKEcVpn8WLgjgyLM013VE3IlSHRDgOIhFeKknSbeTKOvTuiC18ffkAEdl4yUszRV45VuCtU0V+5heHiOohUSPG1AxlFRIVDbV5Q3nVYfpyCr2sSfW4mFpM24hC5RRxGBPVI4Z2aqIrhhvu22OkVDhCqaYuPIGRsHDOQfkwW/KIGpFlrGW1lfs+OkKSrMprVdzrq/x16nb+9MRhi5RoNKNvVNSEyiA8QbioMQ3Delmg0pLGmiaKYq6OS2TKEE5FVgWOEMq6VrxgaN8tqC5iEekd0sxNOtbStw7HuCkPEYfIrMSIbaRaxnl43/t5+NSPyThZ9HrzAjfn8N17PmHdd644jXIdwkbAzMRVDlx+izgGlRM41cQwFSK5YKNdd+egMQpS7cmXJApja2SP77mDkdERdHWVIK5SnpukXmlnpbJo9aujmIHRLXR0diGMw1rQoC6Km+eWFxyr/9rMLAcuvmkFdqoOE0cKQr4nXSbRtm7QpZhwWhOta2uIVeEReTnq6wGCFCbnkW6B7OggXTskA9cP4XfGNBbnqbOMs7xKPp1HzqbtuQPXtdkxPdDHlz/yARsyw4xm276hROvNtu0Dg8YbVnTcmCbVnkI4EOmYuBHR3duLRhJlOwhWa8SlTkgZ2sqSjNNPR0ceX7Vh2vM48Ro6l+bC1TW27dpKlzvA9KVZWrpDe89qqcGnhn6aPx57PzofJt5+TXpPoFp8lK9wBhy8Xg+FJKxo8l39GOmQas0hsh1ILdAyZJkVCleXQdbxZAt+CmpBF6+8Nc7+3TckBQGZbCtb8634UW6TicJkjfVqnUf3/VLiwbD9l7car88nDmIyHRE9rTFTF32cNRcTBDiNBbTfC9l2GsV3kR2KmoK2FlicrzP11kXyYzugsU5Zr7Bnbzd+2qdcrWN0A6Ek5eU1jMoBc4h0yBPvnsGbSiHjSJNc7neCalOsLKQoTHgQgdfbrGjOTy8jhYEoIjswiusHxGlNtRYxvCvLkXfqrKwVWAlW8ON2/uNHlyiXVwnrNRq1CspptVFWsE57hwflNFFN80c7flbIXfeOGGox3f3a5oRGsYGoCuoLNUQKa4SV5RqziyWccA0/KbOMILWu7NioG0aG/ebGWPD2lWWW5mK+9q8nSTlZJA71QBO6Gi/lUni7RqOjYuPLg4//E1IkaXPQYabgMdhfx8269A5V6B2TROWYbE+GR86+yOljpznx4wIyTIibritCl1LJMLNgWJsP+fg//ojHDh9mS76DmYlZzp4r4DrK1owtwqMUaI6VGvzzxNvW0KNIJ24uQBuow/QV3x5cvJJmqZAEIdBBE5mltSWujl/m9oOPEejQShwQ8vaFmK+ePc5nfniU9tEU/kCKb8+9wdiWQV4/Pc3Lr17FbWsjSCnWS8v4xbQ9LylmYh0ibYxej4lTMX3b6ta96hfqxI1kQ0SjFBAFESnhIJN4GxsaQR0TCzwleObMS7hKkc1kCOYk6azA7XTw64as5zFdrPDM149z+MicDUC37At5cPhOy8R1d48YSYxNFLVCncJZlSRo/BsSLgXCkfh5z6Zms6hQUmAiw6ETAdm2LlQsbbmeqM31kkAmIVCIQPBlcZzIQDblM9zTy3Nrr3HysrZ1x8iOkLCsiUNDk4FFYwuGpNVma8RhMwkZHdvR9RyeFScsA5/adgffunQIJSJMbd2Wgm5KEVbBazcESwahm0h8s/wK5do6taDGx1pv5XvF15rVYKJ2CeMvnBRSRxG6oXGzDkElhAAa0wFxopbViLhsoAJ6PbblmuM0XzflhWYtaaTBH0u8AIJSM60nLVgCpSXaRLRmMpY2rCVVluTyhaRmVGgdIGVVWZqBsT5MaCzEuqKJghgjJW6/w/pslXSrx9OLx21yQkOl3g6pHGjRvNNJIGsKmN7pWxQSo/EcF2NCDl74Tx6/4w5L/9WpQ3bfrX/1ISOPPPGCEC0wcfwKfp9HsBZa4zPK0FipN8WJIT3iWyIlJX+4967N94VV23gNb7fPA2M3C+96n/r5ut2bhIa2bAZj4qZNbXykoPun8hz6neeE1EGDlw88K4IFvflqkb6yFeyrT37bivfG08034dHHnhfONTX46eYN3/rND4mjn3/e7nvgod+zJxw++Jw4/MRz4qH+20iKLddxeOLOD1r4BVKc/OL37f4obCAuHfvhZjq+65ufMD944O+b1njtBbsh6Mbqqc/+pZlZXqGvS7J9sJMd23vE7tvuv/bYeE/Jz5Of/ZzFaHSgX8yWp+x892i/3fQXpTfMvz/wFfE/DLgngj8g73EAAAAASUVORK5CYII=", "woodcutter": "data:image/png;base64,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", "auroch": "data:image/png;base64,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", "paperws": "data:image/png;base64,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", "cart": "data:image/png;base64,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", "clay": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAEgUlEQVR4nLWW3W8UVRjGf2dm9mN2drrbbek3bSlQKBZQSiRoDAnGxCjKhfECE2OC/4Am3qgXxguMN8YL/wJvJPHCkJgYFQUvDJGoLVQCFShtoZ+72+7O7O7M7HwdA0RvxFppfO7P8zvPyfs+OUJKyf8pZTOH335yTL46NLjuDcXDJPjk+LPS8xyELjiY6+f81BXevzghNg34+NjTMonGnuFBlLID0oWMwUStRsNZ490zP4iHApx65rAcaO+mr7cHtWwjRcDZ+XH64346hjWWcru5/vMF2nMG73xxTmwYcGLHqHz5yKO0ZTMQ1Ah9nzmrQUeoUAp83KZGoSeHk1ZRVi3KUmPNnueDs7+KfwV8dvwF2betj9irMb1WxlR1FDekKT2WApueTJ5mmCWbSWKlApqyiRQF+rKSn6Yu8eHZSfFAwFuHDsqB7jb2Dw4RLlZYTFTJqAGJZp5IOAShipo3sEoVgqUkbkfAQFsvd1YXaMZ1ujq3oyyUuREu8d65CfEX4OShYVkw8ry4bwxplZjzQtRkGjWGxdIqS26Do0LDTmv86FTIOGm29Brko5jbGZ9Ko8z+jhEKcQOnxbzn+f1X1+4nOHXkgDy6pQspFFqqdb4MNUb6VYo21LUspdVlMu0JAltlm6Fi1Xwy7QpzQRdK8SbtXT1Eus787d/ZN7KT8xcv4dYhdiPEK8M7ZSGd5LmtneR0ncW6S2VoK4bXZP7WCj3DPbhuTIRFVmRpWmt4QYCtpkgqaVQ8WuIUVepEWkSl5BDFMXNVC8+VKE4sWPN8zsws4BppulsypMoNJkoldg20Q83H9Hy81Rq3Z4o0nCb1aRU3VjHTNXpzGYw+k4Vag6szJcphyFy9SRjF+Okm4qOnn5K3rCp9LSYTCxbP9xXo7WnDMpP8Mj6Dmc0ikk2qIklOVxnWTaaqDtvTOpm8zmLJZ3Z1nobn0Ah9YimIRYyZSLG84CBe2jks83qC3jadwNeYq1gM5U1Gd3eRjAykCr7tUszluXZ5kieGelGUiHrO5Otz4xR0lQhJJFTQQlJRGjcKCFUVJXJQar5EUxQMkSKKPUbacwgBy8UaV4uzLGV9rMClbWWFPd2tKChcvLXI5fFrjPUW8EJBIaMRhy7VSsRKw2NfTxdbMj6nJ6fvj+nJx0aloWpkNYNAcUgoSWZLFY4d2IHterRpGlYsmSpWuL5cpr9gUr67yfWAjqRBzfBJ1CPchKSmKnw7fuPvm/z6nr0ynVbQRYrWFpUZ28ZphBwe7KTsNPitaHH3KbtMnemKxMwaVCuL+LFKLqVSiUJMLeT05Ow/d9Ebw2MyMkL6CjkW7TrLdo1kQmHGsmlLG7TqGr4XkW7VKVUcsgmFWESsNpt8d2N+Y3X95v6DshJ67GrPMW3bhHFAEEuKtQapZJLtrSYNP8QKHOx6zDezcw80XrfsXnt8VOIIOo0MRcfCDnxa9RRhLLE8/16qz6/cXNd4XcCfOrF3r9RFhBMHtCQTNMOYTyenNmS8IcA9yCNDcs5ucOHOyn8y3jBgs9rUr2Ij+gNpD1JE3VKxBgAAAABJRU5ErkJggg==", "leather": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAEK0lEQVR4nK2Wy48UVRSHv1tVXdXvnjfzZHBQFIKPGB5qxLDQJTuiUaOJiRvURN2xMtE/QN2wUDcmRiBqiIkLXU2IJEYHiZnIQwwMMAxN98x0d/Wr3lXXVA8zzECAIXKSm5u6ufX7zr3nVyclppE8qAj2foN2/I01ayIGPIm464sHdg9LywkYH+vh45/OCSFu3//cI/28u+chef7yYkf3k8kZYm3lXuLLMbEhQ78RcuzNbVJKydHXthDP8fj5g71yx0BKzjWanb2bBpA/vr2dJyTrUz+we5g920fkQq2O7QVkhYIcKFBu2WIin5MzjSZ//F1m55BGs2VjZAv0d2fFxSvXUNYDWLQDCqkEMopIZ7Jk8ymunJ8j4dnyWvE6quWwazCDJjP800zgOTfzXhfgu+kyU+dqdOdSXKvVOV1aICKg3Y5QhIrt+PiqZNHxGcsmOVdri/sC/PLOM7IlbC4vtBnv70YkdHQjiesKrBC8GtiWwNUUrraW0m9XXb482bg3QErJ9GyNx/ryiCjE83x0FALpkwtDVEOQK2iormRDIcWzg4XOiF10zxPE4pMfviBrtselsolr+ZRMi7BtIZsaUVZFKwWdvboBtfkmucHcingcYrVY7O94Nv+domvLLj595XFp+y5+W8PIWmhenqptkhMCK6Wj2TZ67wDOotnRcNMac0Wno3v41NUlQCxYPHEUIRSGnn+Z+oVT/P7Ze3LyTJnh4SRqJMgnkpy5UsVtmUxs7qNqaxBBoHgojgQ1RGbS2PMeMp2kVG2uQDqAgy+Oy96UxkhvgcD3mbdCFhs2m0Zy1M02lYqPooQYSYOwc1qLkikY6hIIVSPuNnU3REWgCKj7Ebar8e2fs6JTg0gueb3YbmGHEaYT8vBQF61KkwVLxVdCIlVldq6IbVsEgcdgbxav2UZaLromcCNJ2Q7F6OggdnSztGLf1i425JOdh7ymyq3jBU7PVNjYl8O2beq+wlhflrmFNoYIiNIGrlmJuwxKBFYyDSpUW1Gnnoenrq8xykqR92/rWan31pEsuUyGZrURVwk3YMkAnkUQSysRpXqE1p0mo2kc+rUoXt05yDLg9R0bbwfcAmGsPyn7DIMojKg06+gJA10KZCaLX29wVSoYiYivf5tfo7Fv5wi51Vd0q/eXId+fqXBwz4h0hUNU98j3jeI15hG6jotFPUjhSCGOnCzd7VNCu3Xhh7PVznzorael6YVUWrCx2wBpEuYEi6ZDIt+D46/qaPcDWI4LFyt8MVUW8YkUD+l7HugaPdkk86bLkem7Z74cd2wVn5+YXclwdHSAmjSIjAxNJcHmgRQfvTTx/wCrr+z9Y2fFU48OUWraJHyHordkyQcC4EZM/nVZ+G0PS7m/n4R1AeJvIHZVQtcpV+Cr45eYi+5YvjWxvl03IFLKdV/NcvwHJG3+5R/gs4kAAAAASUVORK5CYII=", "meat": "data:image/png;base64,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", "paper": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAEr0lEQVR4nLWVa2xTVRzAf7ft2rV7tXuyB1uDYwyBCRmgCETFgAkhyr4Yg9EommAiMX7SBBNFTFR8RCIYE+UDOiQIAgJLnLIEjSyL8vIRcBMQGHu069be3va2ve2995heswoZ0Q3jP7knJ/fm/H7n/M/5nyvxH2P4170iKocZGhwmlbSx+slXpex7IYT13Xar4LbVSxk5t0coigyYxBI64ZjM8X1bxKXvdwhJsjz81U4x1q5eygevbxBKNIaaiBNXkyA5sNvslJcV0bz82Rx3yitYs+ou3tu8XsTiKpGIjCzH0Q0J0xRUVxZz4OgJHm9bLm5JsPTOuXz4xkYRlaOERsfQTQNDgMvlpKrCx9WBAOf7+pnd3MATD98nopHQ1ASH27eIUDCEpmmYhklETuDMc1DgySedzrBzdxfz5s4glc5QVeG1xjgmAy6vr+Cpp9eIN3fup77Ky7yGGis1NoedwkIPIyGFT/Z28sCKhVy+NmLJ01p68ila+NBicTETJzDNycHe33l+1yHkaApfSRHu/Hza933NfcsXEAjJGLqOmtTImBIlvop/F6xcv0oUlHhw+zwYaYOK2nLq5kxn06cHqa8pY+v7e2lqnI6ixFHVJLopiCkJDnR0S/94TNe1LWM4lRKKQyA57VTUV2Bz5KHrOpqaQk+kSfQNsaL1dnzFhcTUBJFoHCEkjhw7KSFgeCRyc0FH+yZ85V4Rj6fQtDQ9Zy+w97sfmdZUi81uJxlVUWMJ7DYbfmc+cxpqUNQkhiHo6DplMQMjslXNN93kltkNYjikUOhyYTMM1t6/iDpvMe1dPcQLnSRjCVKqhhZPMpIxKMjLo8Cdn4VZM8/uxXhM2IO+E9tFMBim0OPBnW+n1OdldDRC88w6drywARFUkAfDaIqKlOfAFIKwopJJaVIypd0AnyC40PORUKJxRuUkgeAYiWSaiCzjKy5g9sw6Pj/6Dc+03Zu9yZCERFpN4Sn2EClx8htpdn/ZnbvkJggGznwsBoZCDARkqivL0A0Tt9uNx1VEVVkRm9/5jLnNftRUhtamBmuMkdCo9Fda/VlLmsW6rY9NSLclOP3VW2JsLIbL6WCGv5YrA8OkUmkiQQV0nZfe3sPC+U1cHQgRCsco8bitwXaPy9rQK79ckfp6erNd0bp20Q1LsHUffFd0dJ6m6/hJrl0LYHfYKcj3UOv14q/3saP9CK0tTZgCgiMRLvUP0T88ymJ/jTT2R8iC+Fv8YtaS5qxswql0BFSZn3rPI4fj1sWhZ0y2vfYc3gIHm7ftp/WOmQgTei/2E1WTuOwOygvyrwdl+6Kvp9eSZJ8zh0/9LagrK0E3Te65u5Wq0mJ6Lw+y8cXt1NVW0nhbHSktQziskNJ0hCEQppGDj/9Uxmd+PTgnCEYSNNfXEJZjdB7robS0mAUtjfx87jJ10yutys1WaFIzUNV4jnik6yyTCduDj74srVy5DH99NfX+alrnz0GOq9l6YWgwgNfrIa2LHNzucE4abgmyzapHXpHmtzRSXlbKxf5hIpEELqcTU7JT6HajKEoOfqjzh0nDsyGNF8Z4PruPbhWJWAJPURGjwRC7vvg2l5apwrPsnOD/ij8BIm86ePcbjwEAAAAASUVORK5CYII=", "wood": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAFjUlEQVR4nE2WS6glVxWGv/2q1zn3dt+bvm1ipxu1wZjGaFAJKIgTRTJw0HEQJFMFh4LEQVB0oIgDQczAgQ5EIWQkjUQEgyLYEQcBNYgOOgHtPLpD0/dx7nlU1X4s2btOtxZUUezae6/1/+v/V238EJEkiOQ7MWzWpCCk0W/HE3+7/vvyfTNstvOm+6+vvIyE6X3cBHxILNeBsE5lzPuEtU4jQ0A1Fj9Gqqbl9eu/4sUffFuO+hFnhMPTkW/9+KcKNL/83rNyvBoY/cBqPfKTV95QBodRCW0M3o/EqmJzPDA/26FEAmPSVFpx7/rZVz8rt2/fYZEDi3CyWHG4WPOZj11h7Te8+c4dXNuyWKxYbwJ78462q/jKc99Xlz/5eUxVAxGCQvdrzz///Af+8Zc/8p0vPC5ffuKiEAXnHMkH/LAhSYYMs90d4hCZtR0MHo2QkgcrhHHg+W9+TYzKmyfAgNXopmtIwXPtR98VpxLGQMrcJyEkj1WOGHOAiF97tNYkDSEkkiiCgPhMbU3AcPWxA4H/saFThDh6kkDQinEICEJmTBtHcgqV35UG7Ykx4seArvOYQqJHFPgYaRtF5bbBCwrQ2lACNtahg+Aqi1EVKn9IQkyRmMC1lrEPKJU3sVSmIoRQAnsfUDESBo/SCmsN/TpOATJf2iii8qQU8SGASfhhwOhMo8VZxbAaMcZNi4zGj0NZLiia1pFh5pxjmjK3tUFimaGJkqFC09QoZfCbEessxmjCxpM5yDSojDZrvs/BDJk1ZTSiDNFHbFUV/eekK6PLfF3qIYI1lIXBj9g602QYeo/tXOEUpFCWi2MryEMZucRUTFnVFRLjVu56W+I0vVmVVatwrcNoRczyTLEoijFgjcYYi6iERGFYT6pJIRWkJcmUCD4SotzfPAfahjLUTYvv+4maaUXJ0riMU5N8JCrBKMqcYd2XAmcFZrReAqZ2pSZbgU7PfrlGuayQHlG6GCrVU+S6qlitNviY0FqKUpKeith2FtGT5MUourahMgatphpkSr2PaDNvaWezTOikqQQyKkY/EoKnmXWF10yhqGryRlGKoexlTKGqX/WMw1hknDeKRJwTtNtCytBUjqAFrRPKORYyL70obRVU24xQ0FYTUmIMU69KkpFptDNF6hPpNlc3PxMf+vin2Duzz+HyncnBtuLDHz3HR5ymX49U1vGLF1/lgffvcbaHR6uzjKue128sefVfPaYkpoghYbTOZiCbKPZDDjAVI5LwG48E2L8gvHV3xGmFjpGDC3t86anHMOGI1Zh466hnd3fGwx/8AL465tbbJ1SuIoY1KlOWW3d2gHH3BYvJrnMGZTVeIl1X04dEPe9Y9GuanTmxcqy8Z9a1HN89pQ+Ghx46Uxwexr6UNjfKUqKYOxroLNvNalOakrO2QPzNy7fpWsXli7u858EZB13HC9f+w9HS8MCZhgfPVVx55ID9XceNf+fkBJedii59SOdWbRTGamwuej1rieGUC++bc3CpZe9cx82bt7n+WmC/bXh474Rnrl4hxFia2M1bC27cXPLI5cf59BNHSLhcWr6EyAvXXkNbxdhHbGOw2UDWGc6/d8XQV7DuOT4J7JzZ5+nPGe7eepe9S4/yxpuHzHYqVqdj+ZHs18KliyesTiLH6wUqaZrK8czTnygVdc1El7VmsvZ8pyOowOHhkiYp5o3F1RXn9+YcLU5Z3nmXxHl2dxrqquXiQYuSyOHQU5kW1UA1m9P3SyTp0rZNNqfvA7aa9P3bH14V5XQxTAiRLz73kgo+8bvnn8otCBXB5bZB4slnX1KHb/+dP/38G1J8kf8VzvDk13+t6rq6/0crBb53bMknhXtHEr8dC6sBGWPRffy/I8tm6BmWI/nQcG8sJqH3qRxlsvnEj/wXf5owFfcRdUcAAAAASUVORK5CYII=", "noble": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAAENSURBVHicxVXLDcMgDDVVB+gKzRBhgJxz7yDJuQMk2/QKA0TqDO0K3YAKFCNDTQuRSJ+E+MjG7z0CEcYYqIlD1d2BKaBnuVmS5nKtRdjU1BqLtYeSlsrd36JdCnTDUnQWepbG5rBAzyIPWT/V1LJrUbyPsb1TkGJLlSBLbi2liirgmLPMFBOfyvcKEsyRCeD8NDau0TUawyLlf8zkDhdzBemaHefkfNwDymoLNKNE4GNHDwyLUGtu8AwSezjDa3oEpGh+NyzCjr0CuxAHloDbPCgQF9kCHW3ukPNwqfQh/3wgj5nyhQZp+rFx89X7kGkCWQVoERxDJrILlG6M+N//QBd8TfpLrL9otVDdojd1K+PoqKLtzwAAAABJRU5ErkJggg==", "vial": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAAEeSURBVHicvVPdqoJAEB5TyAxCUFDxohtfoVf0EQSfRHwOH0Cl8i9WBEtTL+awA13kqU5BnA+Wb2Z359uZYVaAGRARXkEQhDt/8ehCkiSYZRkej0c8nU7IGEPf93EezCE9eiWKIiiKArqug+VySTbn/8XlcsHb8jzvaWMWzw6qqgJJkmC/3xN/LMDR9z3xOI7wkUAcx2hZFhwOBzifz+A4Driui28L6LoOZVmCqqogyzIYhgG73e69DIZhwLquKTDPc95MuF6voGkahGH4KwtpvsEYg2mauBD5fHhM06RSbNuGPwXGcaRgzuv1mkabZyKKIgl/HcLNSNP09S+aYbvdUuxdCUEQ0ACtViv6B4qiQNM0xLyUtm2JN5vN90r4AYatlef7VDSvAAAAAElFTkSuQmCC", "human": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAAB+SURBVHicY2CgJbh///7/bdu2/cenhgmfZmlpaYY3b94wJCQk/CfZABBYsWIFw82bNxnIBgkJCf/x2U4VwIjN7/g0KCoqMuIMg/v37/9vbGwEs0EB+PXrVziGiaN7iYkyDwwLA1iQObAQrq+vxxoT6DGAYQAySEtLo9RxdAIAzqgyi3lcrrAAAAAASUVORK5CYII=", "pick": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAACCSURBVHictZE9CsAgDEaTUBydPaqLs5dyEe8kKGiLpYNDI9LQt4SQ5MsfAkOt9Zx9pRS+5R2wwDkHv4OrsTnmdXAuDCFsdU0p3dZ7jziKv+5KRCAGf31jeG4SY2RzaGPK0V0msIJgg5yzTEBrLRPovcsESilsjH2jtfa2rTUwxrACFwpcLyAKAP4KAAAAAElFTkSuQmCC", "nobleS": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAACVSURBVHictVLRDoQwCEPiT7MP2D57l17EVALzjLk+YVkLCCIiYmZTHuLUmNkEMhNwFe+afVWh9+6fc4yxZe/0aetpJYe3y9wqh1hBtta+ZmiZZwbvuTiW8+pCNqnAYo+Vk1ytAosvBr+YRDGgWE8UZWNEDprLao2Og//6XW734HC7PelYWTlZXdvqzetL/I9BtspqvR/yHqZfxRvydQAAAABJRU5ErkJggg==", "tech0": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAABcSURBVHic7dHNCcAgDIDRVFxI958hjpQiVFqtV6OH70Eg5JI/kc0ujyaqYi3Pue8ZxElK83r02nysjZdYojYz+8d3sCiLlfK+oOXu9LnE7CXBa4ht2wMAAAA43g047iqh0LqopwAAAABJRU5ErkJggg==", "tech1": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAABfSURBVHic7dQ7DoAgEIThwXA4PTHcTmOhWZGWgeL/aDbbDK+sNFmypBSdb318Mze57P12tp287TU3McYd1lthY1mj1fAET21X/if3f8KqNSVLCnMgYg5MUZgDAABgYRfYAjaPsIC+uwAAAABJRU5ErkJggg==", "tech2": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAAB7SURBVHic7dTBDYAgDAXQQtjCcXQR9nAXF6njOEeNiRA0GE/+evjvRHr5FJIv4ixAUjRbPU/LJTMKyjh0xwm2+X12vkQS5OblvG51lD6/QAk7wptgLM0mNlvvSyLsEm7bvwiCwB5osQdcKHvgWRAE9kCLPeBC2QNE9GM7Q+5Eno2YEd8AAAAASUVORK5CYII=", "tech3": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAAB6SURBVHic7dRLCsAgDATQKJ5SzxevaSn0k1qlKyddzANB3OQjjIizAKmi2q57KY+aUVByHj4n2OT9W7eJNfZirb2PaSzJarXeX3De4fTYxOBLIqwJt+k/BEFgDljMARfKHJgLgsAcsJgDLpQ5MBcEgTlgMQdc6I9zYAPYbaLRdPTi5QAAAABJRU5ErkJggg==", "up1": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAAB0SURBVHic7ZFRCgAhCAUtOpoH82DebZdiYw1aCVz/3oBQ9jFPI3IQkasXJdI8OTPPaw9SMgLUAzn1c9YmqidX1VGZIZonN2sf/eft1+8odqoP+Tac6ZfwBtj8905uRHYTS5BQAD2caIYIWwEAAAAAAACAXm4pi0eMh/cbPQAAAABJRU5ErkJggg==", "up2": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAACdSURBVHic7ZLBCYAwDEVjcSd30JF6diGh3cGpKqEUQ2j10AY9/AeBmID5TT7RA8FT4qAvCJ5SOnJYinCt4etyf3NuJcI9DY9nDmsRr2u3PMckfyhfvu13r+SyX+Bej4BZDtbDS51zWasJ6RIQ1YtaJpRbGcWkC7VV69OMFPBvE5ISZ2FCVwa/rZlr8iTSI8NNSA0sTAgAAAAAAOhrLhvFhL3VDAhjAAAAAElFTkSuQmCC", "tools": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAABaSURBVHic7dM9CsAwCIZhG3K0HOw7mKP3srTQqbSd8kN5n0ECOhhUMwAAAGCy7QiS8qlA0lnTS70erbVb0t2tt2KT1ZG//SQpIyLfduJ3Iyg0YKuNwFe4hpF2kjATxx0UPeEAAAAASUVORK5CYII=", "tools2": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2mlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGB8wAAETECcm1dSFOTupBARGaXAfoGBEQjBIDG5uMA32C2EASf4dg2i9rIubjU4AWd5SUEJkP4AxCJFIUHODAyMLEA2XzqELQJiJ0HYKiB2EdCBQLYJSH06hO0BYidB2DEgdnJBEdBMxgKQ+SmpxclAdgOQnQDyG9TNd6BuVkguLSqDuoWRyZiBgRAfYUb+QgYGi68MDMy9CLGkKQwM29sYGCRuIsRUgOr4mxkYtt0sSa0oQfY8xG1gwJZfAAx9MgIQHwAAnOw4AsHCP9oAAABnSURBVHicY2AYBaNgFIyCUTAKRsEoGAWjYIABI4jYWs3wH5cC71YGRkLylDiABcbwMseU3HYSwSYkTy5gYhhgwEKsb6jhW4JgazXD//+bGP7jinNC8kMyCphGHcAw2KJg22DIDfQEALNxHi62MnWiAAAAAElFTkSuQmCC", "bgmine": "data:image/png;base64,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", "bgpasture": "data:image/png;base64,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", "cl_cold": "data:image/png;base64,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", "cl_temperate": "data:image/png;base64,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", "cl_hot": "data:image/png;base64,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"};
+document.querySelectorAll('img[data-ic]').forEach(i=>{ i.src = IC[i.dataset.ic] || IC.vial; });
+
+/* ---------- game data ---------- */
+const CLAY_TECHS = [
+  {id:'CLAY01', name:'Basic Extracting Clay',          lv:7, cost:4,  kind:'add',  v:0.15, ov:'tech0',  eff:'+15% output'},
+  {id:'CLAYt1', name:'Extracting Clay Tools',          lv:2, cost:6,  kind:'tool', v:0.25, ov:'tools',  eff:'+1 tool slot (+25%)'},
+  {id:'CLAY02', name:'Skilled Extracting Clay',        lv:4, cost:9,  kind:'add',  v:0.15, ov:'tech1',  eff:'+15% output'},
+  {id:'CLAYu1', name:'Improved Clay Mine',             lv:1, cost:58, kind:'up',   v:1.0,  ov:'up1',    eff:'Upgrade I (+100%)'},
+  {id:'CLAY03', name:'Proficient Extracting Clay',     lv:7, cost:15, kind:'add',  v:0.15, ov:'tech2',  eff:'+15% output'},
+  {id:'CLAYt2', name:'Advanced Extracting Clay Tools', lv:2, cost:22, kind:'tool', v:0.25, ov:'tools2', eff:'+1 tool slot (+25%)'},
+  {id:'CLAY04', name:'Expert Extracting Clay',         lv:6, cost:21, kind:'add',  v:0.2,  ov:'tech3',  eff:'+20% output'},
+  {id:'CLAYu2', name:'Advanced Clay Mine',             lv:1, cost:84, kind:'up',   v:1.0,  ov:'up2',    eff:'Upgrade II (+200% total)'},
+];
+const STEPS = []; // one per research level along the path
+CLAY_TECHS.forEach((t,ti)=>{ for(let j=1;j<=t.lv;j++) STEPS.push({ti,j,cost:t.cost,v:t.v}); });
+const KMAX = STEPS.length;
+const ADD_CUM=[0], COST_CUM=[0];
+STEPS.forEach((s,i)=>{ ADD_CUM.push(ADD_CUM[i]+s.v); COST_CUM.push(COST_CUM[i]+s.cost); });
+const TECH_OFFSET = []; { let o=0; CLAY_TECHS.forEach(t=>{ TECH_OFFSET.push(o); o+=t.lv; }); }
+
+// Lab tree branches (Tools and Advanced Laboratory both need Improved Laboratory).
+// The slider follows the best-value order per knowledge spent:
+// Upgrade I, Tools 1, Upgrade II, Efficiency 1-5, then Tools 2 (worst value, so last).
+const LAB_TECHS = [
+  {id:'LAB00', name:'Improved Laboratory',   lv:1, ov:'up1',   eff:'Upgrade I (+50%)',         cost:[50]},
+  {id:'LABTT', name:'Laboratory Tools',      lv:1, ov:'tools', eff:'+1 tool slot (+25%)',      cost:[20], first:1, of:2},
+  {id:'LAB01', name:'Advanced Laboratory',   lv:1, ov:'up2',   eff:'Upgrade II (+100% total)', cost:[100]},
+  {id:'LAB02', name:'Laboratory Efficiency', lv:5, ov:'tech0', eff:'+40% output',              cost:[12,24,36,48,60]},
+  {id:'LABTT', name:'Laboratory Tools',      lv:1, ov:'tools', eff:'+1 tool slot (+25%)',      cost:[40], first:2, of:2},
+];
+const LAB_STEPS=[]; LAB_TECHS.forEach((t,ti)=>{ for(let j=1;j<=t.lv;j++) LAB_STEPS.push({ti,j,cost:t.cost[j-1]}); });
+const LAB_OFFSET=[]; { let o=0; LAB_TECHS.forEach(t=>{ LAB_OFFSET.push(o); o+=t.lv; }); }
+
+/* ---------- state ---------- */
+const S = {
+  W:200, ed:1, rl:1, rm:1, dq:1, lo:0.10,
+  labK:5,
+  k0:0,
+  nL:{on:false, gran:false, count:1, rank:0},
+  nM:{on:false, gran:false, count:1, rank:0},
+};
+try{ const saved = JSON.parse(localStorage.getItem('claypit-calc-v2')||'null'); if(saved) Object.assign(S, saved); }catch(e){}
+const save = ()=>{ try{ localStorage.setItem('claypit-calc-v2', JSON.stringify(S)); }catch(e){} };
+
+/* ---------- model ---------- */
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function nobleAdd(n, workers){
+  if(!n.on) return 0;
+  if(!n.gran) return 2.5;
+  const cap = 50*n.count*(1+2*n.rank);
+  return 2.5*Math.min(1, cap/Math.max(workers,1));
+}
+function labBase(){
+  const k=S.labK;
+  const up = k>=3 ? 1.0 : (k>=1 ? 0.5 : 0);
+  const tools = (k>=2 ? 1 : 0) + (k>=9 ? 1 : 0);
+  return 1 + up + 0.25*tools + 0.4*clamp(k-3,0,5);
+}
+function labSkill(l){ // innovation per lab worker without clay
+  return (labBase() + 2.5*clamp((l-50)/1950,0,1) + nobleAdd(S.nL,l)) * S.rl;
+}
+function mineRate(k,m){ // clay per miner per day
+  return 1.5 * S.dq * (1 + ADD_CUM[k] + 1.0*clamp((m-50)/950,0,1) + nobleAdd(S.nM,m)) * S.rm;
+}
+function evaluate(k,m){
+  const h = m>0 ? Math.ceil(m*S.lo - 1e-9) : 0;
+  const l = S.W - m - h;
+  if(l<=0) return null;
+  const s = labSkill(l);
+  const supply = m>0 ? m*mineRate(k,m) : 0;
+  const demand = l*0.75*2*s;
+  const f = demand>0 ? Math.min(1, supply/demand) : 0;
+  // Education multiplies the city's innovation total, not the lab room, so clay burn is unchanged.
+  return {k,m,h,l,s,supply,demand,f,innov:S.ed*l*s*(1+f)};
+}
+function bestAt(k){
+  let best=null;
+  for(let m=0;m<=S.W;m++){
+    const r=evaluate(k,m); if(!r) break;
+    if(!best || r.innov>best.innov+1e-9) best=r;
+  }
+  best.cost = COST_CUM[k]-COST_CUM[S.k0];
+  best.net = best.innov - best.cost;
+  return best;
+}
+function solve(){
+  const none = evaluate(S.k0,0);
+  const rows=[]; for(let k=S.k0;k<=KMAX;k++) rows.push(bestAt(k));
+  let best=rows[0]; rows.forEach(r=>{ if(r.net>best.net+1e-9) best=r; });
+  return {none, here:rows[0], best, rows};
+}
+
+/* ---------- formatting ---------- */
+const fmt=(x,d=0)=>x.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=x=>(x>=0?'+':'')+fmt(x*100,1)+'%';
+function stepName(k){
+  if(k===0) return 'no clay tech';
+  const s=STEPS[k-1], t=CLAY_TECHS[s.ti];
+  return t.lv>1 ? `${t.name} ${s.j}/${t.lv}` : t.name;
+}
+function ticon(fg, ov, bg){
+  return `<span class="ticon">${bg?`<img class="b" src="${IC[bg]}" alt="">`:''}<img class="${bg?'f':'b'}" src="${IC[fg]}" alt=""><img class="o" src="${IC[ov]}" alt=""></span>`;
+}
+
+/* ---------- render ---------- */
+function renderControls(){
+  const bind=(id,key,scale,show)=>{
+    const el=document.getElementById(id), o=document.getElementById(id+'-o');
+    el.value = S[key]*scale;
+    o.textContent = show(S[key]);
+    el.oninput=()=>{ S[key]=+el.value/scale; o.textContent=show(S[key]); update(); };
+  };
+  { // workforce: power curve so the middle of the track is 400 (10 at the left, 2,000 at the right)
+    const el=document.getElementById('w'), o=document.getElementById('w-o');
+    const A=Math.log((400-10)/1990)/Math.log(0.5);
+    const toW=p=>{ const w=10+1990*Math.pow(p/1000,A); return clamp(Math.round(w/(w<100?1:w<1000?5:10))*(w<100?1:w<1000?5:10),10,2000); };
+    const toP=w=>Math.round(1000*Math.pow((w-10)/1990,1/A));
+    el.value=toP(S.W); o.textContent=fmt(S.W);
+    el.oninput=()=>{ S.W=toW(+el.value); o.textContent=fmt(S.W); update(); };
+    document.querySelectorAll('.wstep button').forEach(b=>b.onclick=()=>{
+      const d=+b.dataset.d, W=S.W, step = (d>0 ? W>=1000 : W>1000) ? 50 : (d>0 ? W>=100 : W>100) ? 10 : 5;
+      S.W=clamp(W+d*step,10,2000); el.value=toP(S.W); o.textContent=fmt(S.W); update();
+    });
+  }
+  bind('ed','ed',1,v=>'×'+v.toFixed(2));
+  bind('rl','rl',1,v=>'×'+v.toFixed(2));
+  bind('rm','rm',1,v=>'×'+v.toFixed(2));
+  bind('dq','dq',100,v=>Math.round(v*100)+'%');
+  bind('lo','lo',100,v=>Math.round(v*100)+'%');
+  renderNoble('nb-lab','nL','lab','Master of Laboratories','lab workers');
+  renderNoble('nb-mine','nM','mine','Master of Claypits','miners');
+}
+function renderNoble(id,key,ic,title,who){
+  const n=S[key], box=document.getElementById(id);
+  box.innerHTML = `
+    <div class="row">
+      <img class="px" src="${IC.noble}" alt="">
+      <label class="tick"><input type="checkbox" id="${id}-on" ${n.on?'checked':''}> ${title} <span class="muted">+250%</span></label>
+      <img class="px" src="${IC[ic]}" alt="" title="${title}">
+    </div>
+    ${n.on ? (n.gran ? `
+      <div class="gran">
+        <label for="${id}-c">Nobles</label><input type="number" id="${id}-c" min="1" max="20" value="${n.count}">
+        <label for="${id}-r">Rank</label><input type="number" id="${id}-r" min="0" max="10" value="${n.rank}">
+        <span>covers <b class="num">${fmt(50*n.count*(1+2*n.rank))}</b> ${who}</span>
+        <button class="linkbtn" id="${id}-g">Cover everyone</button>
+      </div>` : `
+      <div class="gran"><span>Covers all ${who}.</span><button class="linkbtn" id="${id}-g">Set nobles and rank</button></div>`) : ''}`;
+  box.querySelector(`#${id}-on`).onchange=e=>{ n.on=e.target.checked; renderNoble(id,key,ic,title,who); update(); };
+  const g=box.querySelector(`#${id}-g`); if(g) g.onclick=()=>{ n.gran=!n.gran; renderNoble(id,key,ic,title,who); update(); };
+  const c=box.querySelector(`#${id}-c`), r=box.querySelector(`#${id}-r`);
+  if(c) c.oninput=()=>{ n.count=clamp(Math.round(+c.value||1),1,20); box.querySelector('.gran b').textContent=fmt(50*n.count*(1+2*n.rank)); update(); };
+  if(r) r.oninput=()=>{ n.rank=clamp(Math.round(+r.value||0),0,10); box.querySelector('.gran b').textContent=fmt(50*n.count*(1+2*n.rank)); update(); };
+}
+
+/* A snapping slider over a linear tech path, with a bubble naming the tech under the thumb. */
+function makeTechSlider(cfg){
+  const stage=document.getElementById(cfg.id);
+  const N=cfg.steps.length;
+  stage.innerHTML = `<div class="bubble"></div>
+    <input type="range" class="tech" id="${cfg.id}-r" min="0" max="${N}" step="1" aria-label="${cfg.label}">
+    <div class="ticks">${cfg.techs.map((t,ti)=>`<span style="left:${(cfg.offset[ti]+1)/N*100}%" title="${t.name}">${ticon(cfg.fg, t.ov, cfg.bg)}</span>`).join('')}</div>
+    <div class="stepper"><button type="button" data-d="-1">− Previous level</button><button type="button" data-d="1">Next level +</button></div>
+    <div class="ts-foot"></div>`;
+  const changed = ()=> (cfg.onChange || update)();
+  stage.querySelectorAll('.stepper button').forEach(b=>b.onclick=()=>{
+    const k=clamp(+input.value + +b.dataset.d, 0, N); cfg.set(k); changed();
+  });
+  const input=stage.querySelector('input'), bubble=stage.querySelector('.bubble'), foot=stage.querySelector('.ts-foot');
+  const pos=k=>`calc(10px + (100% - 20px) * ${k/N})`;
+  function draw(k, opt){
+    input.value=k;
+    const a=pos(k), b=pos(Math.max(k,opt??k));
+    input.style.setProperty('--fill', `linear-gradient(to right, var(--innov) 0 ${a}, var(--good) ${a} ${b}, var(--panel-2) ${b} 100%)`);
+    bubble.innerHTML = cfg.bubble(k, opt);
+    // place bubble over the thumb, kept inside the stage
+    const W=stage.clientWidth, x=10+(W-20)*k/N, bw=bubble.offsetWidth;
+    const left=clamp(x, bw/2, W-bw/2);
+    bubble.style.left=left+'px';
+    bubble.style.setProperty('--arrow', (x-left+bw/2)+'px');
+    foot.innerHTML = cfg.foot(k, opt);
+  }
+  input.addEventListener('input',()=>{ cfg.set(+input.value); changed(); });
+  return {draw};
+}
+
+function techAt(steps, techs, k){
+  if(k===0) return null;
+  const s=steps[k-1], t=techs[s.ti];
+  const label = t.of ? `${t.name} ${t.first+s.j-1}/${t.of}` : (t.lv>1 ? `${t.name} ${s.j}/${t.lv}` : t.name);
+  return {t, j:s.j, label};
+}
+
+const labSlider = makeTechSlider({
+  id:'ts-lab', label:'Laboratory tech level', steps:LAB_STEPS, techs:LAB_TECHS, offset:LAB_OFFSET, fg:'lab',
+  set:k=>S.labK=k,
+  bubble:k=>{
+    const a=techAt(LAB_STEPS,LAB_TECHS,k);
+    if(!a) return `${ticon('lab','tech0')}<div><div class="nm">No lab tech</div><div class="meta">Basic laboratory</div></div>`;
+    return `${ticon('lab',a.t.ov)}<div><div class="nm">${a.label}</div><div class="meta">${a.t.eff}</div></div>`;
+  },
+  foot:k=>{
+    const spent=LAB_STEPS.slice(0,k).reduce((s,x)=>s+x.cost,0);
+    let earn='';
+    if(k>0){
+      const b = typeof badge==='function' ? badge({k:spent}, LAB_EARN, 'innovation', true) : '';
+      earn = LAB_EARN>0.05 ? `<span>In exchange <b class="spend g">+${fmt(LAB_EARN,1)}</b> innovation${b}</span>`
+                           : `<span><b class="spend z">Not contributing</b> to innovation${b}</span>`;
+    }
+    return `<span>Lab bonus from tech <b>+${fmt((labBase()-1)*100)}%</b></span><span>Knowledge spent <b class="spend k">${fmt(spent)}</b></span>${earn}`;
+  },
+});
+
+const claySlider = makeTechSlider({
+  id:'ts-clay', label:'Claypit tech level kept anyway', steps:STEPS, techs:CLAY_TECHS, offset:TECH_OFFSET, fg:'clay', bg:'bgmine',
+  set:k=>S.k0=k,
+  bubble:(k,opt)=>{
+    const a=techAt(STEPS,CLAY_TECHS,k);
+    const head = a ? `${ticon('clay',a.t.ov,'bgmine')}<div><div class="nm">${a.label}</div><div class="meta">${a.t.eff}</div>`
+                   : `${ticon('clay','tech0','bgmine')}<div><div class="nm">No clay tech</div><div class="meta">Basic claypit</div>`;
+    const o = opt>k ? `<div class="opt">Best: research to ${stepName(opt)}</div>` : '';
+    return head+o+'</div>';
+  },
+  foot:(k,opt)=>{
+    const extra = opt>k ? `<span>Extra worth buying <b class="spend g">${fmt(COST_CUM[opt]-COST_CUM[k])}</b> innovation</span>` : '';
+    return `<span>Claypit bonus from tech <b>+${fmt(ADD_CUM[k]*100)}%</b></span><span>Already paid <b class="spend i">${fmt(COST_CUM[k])}</b> innovation</span>${extra}`;
+  },
+});
+
+function renderVerdict(R){
+  const v=document.getElementById('verdict');
+  const gain=R.best.net-R.none.innov, gainRel=gain/R.none.innov;
+  const useClay = R.best.m>0 && gain>0.05;
+  const extra = R.best.k>S.k0;
+  v.className='verdict '+(useClay?'yes':'no');
+  if(useClay){
+    v.innerHTML = `<span class="tag">Burn clay</span>
+      <h3><span class="num">+${fmt(gain)}</span> innovation <span class="muted" style="font-size:1rem">(${pct(gainRel)} over all labs)</span></h3>
+      <p>Put <b>${fmt(R.best.m)}</b> on claypits${R.best.h?` and <b>${fmt(R.best.h)}</b> on hauling`:''}, and <b>${fmt(R.best.l)}</b> in labs. ${
+        extra ? `Research clay tech up to <b>${stepName(R.best.k)}</b> for <b class="num">${fmt(R.best.cost)}</b> innovation. It pays for itself.`
+              : `No more clay tech is needed beyond the level you keep anyway.`}</p>`;
+  } else {
+    v.innerHTML = `<span class="tag">Skip clay</span>
+      <h3>Put all <span class="num">${fmt(S.W)}</span> workers in labs</h3>
+      <p>No clay tech level and no split of miners beats running the labs without clay. All labs gives <b class="num">${fmt(R.none.innov)}</b> innovation.</p>`;
+  }
+  // allocation bar
+  const b=R.best, use=useClay?b:R.none;
+  document.getElementById('alloc-bar').innerHTML =
+    `<div class="seg-lab" style="flex-grow:${use.l}" title="Lab workers"></div>`+
+    (use.m?`<div class="seg-mine" style="flex-grow:${use.m}" title="Claypit miners"></div>`:'')+
+    (use.h?`<div class="seg-haul" style="flex-grow:${use.h}" title="Haulers"></div>`:'');
+  document.getElementById('alloc-legend').innerHTML =
+    `<span><span class="sw seg-lab"></span><img class="px" src="${IC.lab}" alt="">Labs <b>${fmt(use.l)}</b></span>`+
+    `<span><span class="sw seg-mine"></span><img class="px" src="${IC.mine}" alt="">Claypits <b>${fmt(use.m)}</b></span>`+
+    `<span><span class="sw seg-haul"></span><img class="px" src="${IC.cart}" alt="">Haulers <b>${fmt(use.h)}</b></span>`;
+  // pinned bar (phone mode only, hidden by CSS otherwise)
+  if(ACTIVE==='clay') setMbar(useClay, 'clay', useClay?'+'+fmt(gain)+' innovation':fmt(R.none.innov)+' innovation',
+    [['lab',use.l],['mine',use.m],['cart',use.h]]);
+  return useClay;
+}
+
+function renderTiles(R,useClay){
+  const b=useClay?R.best:R.here;
+  const feeds = b.m>0 ? mineRate(b.k,b.m)/(1.5*b.s) : mineRate(b.k,1)/(1.5*labSkill(S.W));
+  const t=[
+    ['Lab worker, no clay', fmt(S.ed*labSkill(useClay?b.l:S.W),2), S.ed>1?`innovation each, incl. ×${S.ed.toFixed(2)} education`:'innovation each'],
+    ['Lab worker, with clay', fmt(2*S.ed*labSkill(useClay?b.l:S.W),2), `burns ${fmt(1.5*labSkill(useClay?b.l:S.W),2)} clay/day`],
+    ['Claypit miner', fmt(mineRate(b.k, Math.max(b.m,1)),2), 'clay per day'],
+    ['1 miner feeds', fmt(feeds,2), 'lab workers with clay'],
+  ];
+  document.getElementById('tiles').innerHTML = t.map(([k,v,s])=>`<div class="tile"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join('');
+}
+
+function renderCompare(R){
+  const rows=[
+    ['All labs, no clay', R.none, 0],
+    ['Clay at the tech you keep anyway', R.here, R.here.cost],
+  ];
+  if(R.best.k!==R.here.k) rows.push([`Clay with research up to ${stepName(R.best.k)}`, R.best, R.best.cost]);
+  const bestNet=Math.max(...rows.map(r=>r[1].innov-r[2]));
+  document.getElementById('cmp').innerHTML =
+    `<thead><tr><th>Option</th><th>Labs</th><th>Miners</th><th>Haulers</th><th>Innovation</th><th>Tech cost</th><th>Net</th><th>vs all labs</th></tr></thead><tbody>`+
+    rows.map(([n,r,c])=>{ const net=r.innov-c; return `<tr class="${Math.abs(net-bestNet)<1e-6?'best':''}"><td>${n}</td><td data-label="Labs">${fmt(r.l)}</td><td data-label="Miners">${fmt(r.m)}</td><td data-label="Haulers">${fmt(r.h)}</td><td data-label="Innovation">${fmt(r.innov)}</td><td data-label="Tech cost">${c?fmt(c):'–'}</td><td data-label="Net">${fmt(net)}</td><td data-label="vs all labs">${r===R.none?'–':pct(net/R.none.innov-1)}</td></tr>`; }).join('')+
+    `</tbody>`;
+}
+
+function renderChart(R){
+  const box=document.getElementById('chart');
+  const phone=isPhone();
+  const Wd=phone?360:680, Ht=phone?280:240, pl=phone?50:46, pr=phone?8:12, pt=14, pb=40;
+  const rows=R.rows, n=rows.length, base=R.none.innov;
+  const gains=rows.map(r=>r.net-base);
+  const hi=Math.max(0,...gains), lo=Math.min(0,...gains);
+  const span=Math.max(hi-lo, base*0.01, 1);
+  const niceStep=(()=>{ const raw=span/4, p=Math.pow(10,Math.floor(Math.log10(raw))); const m=raw/p; return (m<1.5?1:m<3?2:m<7?5:10)*p; })();
+  const yMax=Math.ceil(hi*1.1/niceStep)*niceStep || niceStep, yMin=Math.floor(lo*1.05/niceStep)*niceStep;
+  const y=v=>pt+(Ht-pt-pb)*(yMax-v)/(yMax-yMin);
+  const bw=(Wd-pl-pr)/n, gap=Math.min(2, bw*0.15);
+  let svg=`<svg viewBox="0 0 ${Wd} ${Ht}" role="img" aria-label="Innovation gained or lost against all labs, by clay tech level">`;
+  for(let v=yMin; v<=yMax+1e-9; v+=niceStep){
+    svg+=`<line x1="${pl}" x2="${Wd-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end">${v>0?'+':''}${fmt(v)}</text>`;
+  }
+  rows.forEach((r,i)=>{
+    const g=gains[i], x=pl+i*bw+gap/2, w=Math.max(1,bw-gap), y0=y(0), y1=y(g);
+    const isBest=r===R.best && g>0.05;
+    const fill = isBest ? 'var(--good)' : (g>0 ? 'var(--bar)' : 'var(--bar-base)');
+    const rad=Math.min(3,w/2, Math.abs(y1-y0));
+    if(Math.abs(y1-y0)>0.5){
+      svg+= g>=0
+        ? `<path d="M${x},${y0} V${y1+rad} Q${x},${y1} ${x+rad},${y1} H${x+w-rad} Q${x+w},${y1} ${x+w},${y1+rad} V${y0} Z" fill="${fill}"/>`
+        : `<path d="M${x},${y0} V${y1-rad} Q${x},${y1} ${x+rad},${y1} H${x+w-rad} Q${x+w},${y1} ${x+w},${y1-rad} V${y0} Z" fill="${fill}"/>`;
+    }
+    svg+=`<rect x="${pl+i*bw}" y="${pt}" width="${bw}" height="${Ht-pt-pb}" fill="transparent" data-i="${i}" class="hit"/>`;
+  });
+  CLAY_TECHS.forEach((t,ti)=>{
+    const k=TECH_OFFSET[ti]+1; if(k<=S.k0) return;
+    const x=pl+(k-S.k0)*bw;
+    svg+=`<line x1="${x}" x2="${x}" y1="${Ht-pb}" y2="${Ht-pb+6}" stroke="var(--muted)"/>`;
+  });
+  svg+=`<line x1="${pl}" x2="${Wd-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--clay)" stroke-width="2" stroke-dasharray="6 4"/>`;
+  svg+=`<text x="${pl+6}" y="${y(0)-6}" class="lbl">All labs, no clay (${fmt(base)})</text>`;
+  if(R.best.m>0 && gains[rows.indexOf(R.best)]>0.05){
+    const bi=rows.indexOf(R.best), bx=pl+bi*bw+bw/2;
+    svg+=`<text x="${clamp(bx,pl+30,Wd-pr-30)}" y="${y(gains[bi])-6}" text-anchor="middle" class="lbl">+${fmt(gains[bi])}</text>`;
+  }
+  svg+=`<text x="${pl}" y="${Ht-10}">${S.k0===0?'No clay tech':(phone?'Kept level':'Your kept level')}</text><text x="${Wd-pr}" y="${Ht-10}" text-anchor="end">${phone?'Full tree →':'Advanced Clay Mine →'}</text>`;
+  svg+=`</svg><div class="tip" hidden></div>`;
+  box.innerHTML=svg;
+  const tip=box.querySelector('.tip');
+  const fill=r=>{ tip.innerHTML=`<b>${stepName(r.k)}</b><br>Net <span class="num">${fmt(r.net)}</span> (${pct(r.net/R.none.innov-1)} vs all labs)<br>Miners ${fmt(r.m)} · haulers ${fmt(r.h)} · labs ${fmt(r.l)}<br>Extra tech cost <span class="num">${fmt(r.cost)}</span> · clay supplied ${fmt(r.f*100,0)}%`; };
+  box.querySelectorAll('.hit').forEach(h=>{
+    // tap (touch) shows the details under the chart's top edge, centred on the bar
+    h.addEventListener('click',e=>{
+      fill(rows[+h.dataset.i]); tip.hidden=false;
+      const bb=box.getBoundingClientRect(), hb=h.getBoundingClientRect(), tw=tip.offsetWidth;
+      tip.style.left=clamp(hb.left-bb.left+hb.width/2-tw/2, 0, bb.width-tw)+'px'; tip.style.top='4px';
+      e.stopPropagation();
+    });
+    h.addEventListener('mouseenter',e=>{
+      if(e.pointerType==='touch' || matchMedia('(hover: none)').matches) return;
+      fill(rows[+h.dataset.i]); tip.hidden=false;
+    });
+    h.addEventListener('mousemove',e=>{
+      if(matchMedia('(hover: none)').matches) return;
+      const bb=box.getBoundingClientRect(); let x=e.clientX-bb.left+12; if(x>bb.width-260) x=e.clientX-bb.left-262;
+      tip.style.left=Math.max(0,x)+'px'; tip.style.top=(e.clientY-bb.top-10)+'px';
+    });
+    h.addEventListener('mouseleave',()=>{ if(!matchMedia('(hover: none)').matches) tip.hidden=true; });
+  });
+}
+
+/* "What more research would buy" for the Clay tab: more lab tech (knowledge -> innovation) */
+function renderClayMore(R){
+  const tbl=document.getElementById('clay-more'), k=S.labK, N=LAB_STEPS.length, rows=[];
+  const at = t => { S.labK=t; const r=solve(); S.labK=k; return r.best.net; };
+  const add = (name, t) => {
+    const cost = LAB_STEPS.slice(k,t).reduce((a,x)=>a+x.cost,0), g = at(t) - R.best.net;
+    const b = typeof badge==='function' ? badge({k:cost}, g, 'innovation', true) : '';
+    rows.push(`<tr><td>${name}</td><td data-label="Cost">${fmt(cost)} knowledge${b}</td><td data-label="Innovation gained">${g>=0.05?'+':''}${fmt(g,1)}</td><td data-label="Per 100 spent">${g>0.05?fmt(100*g/cost,1):'–'}</td></tr>`);
+  };
+  if(k<N){
+    const a=techAt(LAB_STEPS,LAB_TECHS,k+1);
+    add(`Next level: ${a.label}`, k+1);
+    if(N>k+1) add('Lab tree to the end', N);
+  }
+  tbl.innerHTML = `<thead><tr><th>Research</th><th>Cost</th><th>Innovation gained</th><th>Per 100 spent</th></tr></thead><tbody>` +
+    (rows.length ? rows.join('') : `<tr><td>All lab tech is researched</td><td data-label="Cost">–</td><td data-label="Innovation gained">–</td><td data-label="Per 100 spent">–</td></tr>`) + `</tbody>`;
+}
+
+let LAB_EARN = 0;  // innovation the lab tech adds: best result now minus best result with no lab tech
+function update(){
+  const R=solve();
+  if(S.labK>0){ const k=S.labK; S.labK=0; const R0=solve(); S.labK=k; LAB_EARN=R.best.net-R0.best.net; } else LAB_EARN=0;
+  const useClay=renderVerdict(R);
+  renderTiles(R,useClay);
+  renderCompare(R);
+  renderChart(R);
+  renderClayMore(R);
+  labSlider.draw(S.labK);
+  claySlider.draw(S.k0, useClay?R.best.k:S.k0);
+  save();
+}
+/* ---------- view mode: auto-detect phones, or force desktop / phone ---------- */
+const phoneMQ = matchMedia('(max-width: 700px)');
+let VIEW='auto';
+try{ VIEW = localStorage.getItem('claypit-view') || 'auto'; }catch(e){}
+function isPhone(){ return VIEW==='phone' || (VIEW==='auto' && phoneMQ.matches); }
+function applyView(){
+  document.documentElement.classList.toggle('phone', isPhone());
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.view===VIEW));
+  document.getElementById('view-note').textContent = VIEW==='auto' ? `(showing ${phoneMQ.matches?'phone':'desktop'} layout)` : '';
+}
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{
+  VIEW=b.dataset.view; try{ localStorage.setItem('claypit-view', VIEW); }catch(e){}
+  applyView(); refreshActive();
+});
+phoneMQ.addEventListener('change', ()=>{ applyView(); refreshActive(); });
+
+/* ---------- tabs ---------- */
+var ACTIVE = (location.hash||'').replace('#','');
+if(!['clay','leather','paper'].includes(ACTIVE)){ try{ ACTIVE = localStorage.getItem('claypit-tab') || 'clay'; }catch(e){ ACTIVE='clay'; } }
+if(!['clay','leather','paper'].includes(ACTIVE)) ACTIVE='clay';
+const MODULES = { clay: ()=>update() }; // leather and paper register themselves below
+function refreshActive(){ (MODULES[ACTIVE]||update)(); }
+function showTab(t){
+  ACTIVE=t;
+  document.querySelectorAll('.tabs button').forEach(b=>{ const on=b.dataset.tab===t; b.setAttribute('aria-selected', on); b.tabIndex=on?0:-1; });
+  document.querySelectorAll('.tabpanel').forEach(p=>p.hidden = p.id!=='tab-'+t);
+  try{ localStorage.setItem('claypit-tab', t); }catch(e){}
+  if(location.hash!=='#'+t) history.replaceState(null,'','#'+t);
+  refreshActive();
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+addEventListener('hashchange', ()=>{ const t=location.hash.replace('#',''); if(['clay','leather','paper'].includes(t) && t!==ACTIVE) showTab(t); });
+
+/* pinned phone bar, shared by all tabs */
+function setMbar(yes, what, big, split){
+  const mb=document.getElementById('mbar');
+  mb.className='mbar '+(yes?'yes':'no');
+  mb.innerHTML = `<div class="mv"><span class="tag">${yes?'Burn '+what:'Skip '+what}</span><span class="big num">${big}</span></div>
+    <div class="split">${split.filter(([,n])=>n>0).map(([ic,n])=>`<span><img class="px" src="${IC[ic]}" alt="">${fmt(n)}</span>`).join('')}</div>`;
+}
+document.addEventListener('click', ()=>{ const t=document.querySelector('.chart-box .tip'); if(t) t.hidden=true; });
+
+applyView();
+renderControls();
+update();
+{ // info tooltip: hover or focus on desktop, tap to toggle on touch
+  const b=document.getElementById('clay-info-b'), p=document.getElementById('clay-info');
+  const show=v=>{ p.hidden=!v; b.setAttribute('aria-expanded', v); };
+  let pinned=false;
+  b.addEventListener('mouseenter',()=>show(true));
+  b.addEventListener('mouseleave',()=>{ if(!pinned) show(false); });
+  b.addEventListener('focus',()=>show(true));
+  b.addEventListener('blur',()=>{ pinned=false; show(false); });
+  b.addEventListener('click',()=>{ pinned=!pinned; show(pinned); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ pinned=false; show(false); } });
+}
+addEventListener('resize', ()=>refreshActive());
+</script>
+<script>
+/* Leather -> Libraries and Paper -> Admin tabs.
+   Runs after the clay script, so it reuses: IC, S (for education), save, clamp, fmt, pct,
+   nobleAdd, ticon, makeTechSlider, techAt, isPhone, MODULES, ACTIVE, setMbar, showTab. */
+
+/* ---------- small DOM helpers ---------- */
+const el = html => { const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; };
+const WA = Math.log((400-10)/1990)/Math.log(0.5);
+const wfToW = p => { const w=10+1990*Math.pow(p/1000,WA); const st=w<100?1:w<1000?5:10; return clamp(Math.round(w/st)*st,10,2000); };
+const wfToP = w => Math.round(1000*Math.pow((w-10)/1990,1/WA));
+const loadState = (key, def) => { try{ const s=JSON.parse(localStorage.getItem(key)||'null'); if(s) return Object.assign(def, s); }catch(e){} return def; };
+const saveState = (key, st) => { try{ localStorage.setItem(key, JSON.stringify(st)); }catch(e){} };
+
+function addRange(parent, c){
+  const box = el(`<div class="ctl ${c.primary?'primary':''}">
+    <div class="ctl-head"><img class="px" src="${IC[c.icon]}" alt=""><label for="${c.id}">${c.label}</label><output id="${c.id}-o" class="num"></output></div>
+    <input type="range" id="${c.id}" min="${c.wf?0:c.min}" max="${c.wf?1000:c.max}" step="${c.wf?1:c.step}">
+    <div class="ends">${c.ends.map(e=>`<span>${e}</span>`).join('')}</div>
+    ${c.wf?`<div class="wstep"><button type="button" data-d="-1" aria-label="Fewer workers">−</button><button type="button" data-d="1" aria-label="More workers">+</button></div>`:''}
+  </div>`);
+  parent.appendChild(box);
+  const inp=box.querySelector('input'), o=box.querySelector('output'), sc=c.scale||1;
+  const sync=()=>{ inp.value = c.wf ? wfToP(c.get()) : c.get()*sc; o.textContent=c.show(c.get()); };
+  inp.oninput=()=>{ c.set(c.wf ? wfToW(+inp.value) : +inp.value/sc); o.textContent=c.show(c.get()); c.onChange(); };
+  box.querySelectorAll('.wstep button').forEach(b=>b.onclick=()=>{
+    const d=+b.dataset.d, W=c.get(), step=(d>0?W>=1000:W>1000)?50:(d>0?W>=100:W>100)?10:5;
+    c.set(clamp(W+d*step,10,2000)); sync(); c.onChange();
+  });
+  sync();
+  return {sync};
+}
+
+function addNoble(parent, id, n, ic, title, who, onChange){
+  const box = el(`<div class="noble"></div>`); parent.appendChild(box);
+  const draw = ()=>{
+    box.innerHTML = `
+      <div class="row"><img class="px" src="${IC.noble}" alt="">
+        <label class="tick"><input type="checkbox" id="${id}-on" ${n.on?'checked':''}> ${title} <span class="muted">+250%</span></label>
+        <img class="px" src="${IC[ic]}" alt=""></div>
+      ${n.on ? (n.gran ? `
+        <div class="gran"><label for="${id}-c">Nobles</label><input type="number" id="${id}-c" min="1" max="20" value="${n.count}">
+          <label for="${id}-r">Rank</label><input type="number" id="${id}-r" min="0" max="10" value="${n.rank}">
+          <span>covers <b class="num">${fmt(50*n.count*(1+2*n.rank))}</b> ${who}</span>
+          <button class="linkbtn" id="${id}-g">Cover everyone</button></div>`
+        : `<div class="gran"><span>Covers all ${who}.</span><button class="linkbtn" id="${id}-g">Set nobles and rank</button></div>`) : ''}`;
+    box.querySelector(`#${id}-on`).onchange=e=>{ n.on=e.target.checked; draw(); onChange(); };
+    const g=box.querySelector(`#${id}-g`); if(g) g.onclick=()=>{ n.gran=!n.gran; draw(); onChange(); };
+    const c=box.querySelector(`#${id}-c`), r=box.querySelector(`#${id}-r`);
+    const cov=()=>{ box.querySelector('.gran b').textContent=fmt(50*n.count*(1+2*n.rank)); };
+    if(c) c.oninput=()=>{ n.count=clamp(Math.round(+c.value||1),1,20); cov(); onChange(); };
+    if(r) r.oninput=()=>{ n.rank=clamp(Math.round(+r.value||0),0,10); cov(); onChange(); };
+  };
+  draw();
+}
+
+function addToggle(parent, c){
+  const box = el(`<label class="tgl">${ticon(c.fg, c.ov, c.bg)}<input type="checkbox" id="${c.id}">
+    <span><span class="nm">${c.name}</span><br><span class="meta">${c.meta}</span></span></label>`);
+  parent.appendChild(box);
+  const inp=box.querySelector('input'); inp.checked=!!c.get();
+  inp.onchange=()=>{ c.set(inp.checked); c.onChange(); };
+}
+
+/* A linear tech path for makeTechSlider: techs -> steps, cumulative adds and costs */
+function techPath(techs){
+  const steps=[], offset=[]; let o=0;
+  techs.forEach((t,ti)=>{ offset.push(o); for(let j=1;j<=t.lv;j++){ steps.push({ti,j,cost:t.cost[Math.min(j-1,t.cost.length-1)],cur:t.cur||'innovation',add:t.add||0,kind:t.kind||'add'}); o++; } });
+  const add=[0], spentI=[0], spentK=[0], cnt={};
+  steps.forEach((s,i)=>{ add.push(add[i]+s.add); spentI.push(spentI[i]+(s.cur==='innovation'?s.cost:0)); spentK.push(spentK[i]+(s.cur==='knowledge'?s.cost:0)); });
+  return {techs, steps, offset, add, spentI, spentK, N:steps.length};
+}
+const costBetween = (P,a,b) => ({i:P.spentI[b]-P.spentI[a], k:P.spentK[b]-P.spentK[a]});
+const costText = c => [c.i?`${fmt(c.i)} innovation`:'', c.k?`${fmt(c.k)} knowledge`:''].filter(Boolean).join(' + ') || '–';
+
+function slider(prefix, P, c){
+  return makeTechSlider({
+    id:prefix, label:c.label, steps:P.steps, techs:P.techs, offset:P.offset, fg:c.fg, bg:c.bg,
+    set:c.set, onChange:c.onChange,
+    bubble:k=>{
+      const a=techAt(P.steps,P.techs,k);
+      if(!a) return `${ticon(c.fg,'tech0',c.bg)}<div><div class="nm">${c.none}</div><div class="meta">${c.noneMeta||''}</div></div>`;
+      return `${ticon(c.fg,a.t.ov,c.bg)}<div><div class="nm">${a.label}</div><div class="meta">${a.t.eff}</div></div>`;
+    },
+    foot:k=>{
+      const parts=[`<span>${c.bonusLabel} <b>${c.bonus(k)}</b></span>`];
+      if(P.spentI[k] || !P.spentK[P.N]) parts.push(`<span>Innovation spent <b class="spend i">${fmt(P.spentI[k])}</b></span>`);
+      if(P.spentK[P.N]) parts.push(`<span>Knowledge spent <b class="spend k">${fmt(P.spentK[k])}</b></span>`);
+      if(c.earn && k>0){ const e=c.earn(); parts.push(e.v>0.05
+        ? `<span>In exchange <b class="spend g">+${fmt(e.v,1)}</b> ${e.unit}${badge(costBetween(P,0,k), e.v, e.unit, !!c.direct)}</span>`
+        : `<span><b class="spend z">Not contributing</b> to ${e.unit}${badge(costBetween(P,0,k), e.v, e.unit, !!c.direct)}</span>`); }
+      return parts.join('');
+    },
+  });
+}
+
+/* The page skeleton every new tab shares */
+function buildTab(prefix, cfg){
+  const root=document.getElementById('tab-'+prefix);
+  root.innerHTML = `
+    <section class="panel" aria-label="Research">
+      <h2>Research <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400;font-size:.82rem">set what you have researched</span></h2>
+      <div class="research ${cfg.sliders.length===3?'three':'two'}">${cfg.sliders.map(s=>`
+        <div class="ts"><div class="ts-title"><h3>${s.title}</h3><span class="muted">${s.sub}</span></div><div class="ts-stage" id="${prefix}-ts-${s.key}"></div></div>`).join('')}
+      </div>
+      <div class="toggles" id="${prefix}-tgl" style="margin-top:14px"></div>
+      <div class="pay" id="${prefix}-pay"></div>
+    </section>
+    <div class="grid">
+      <aside class="panel" aria-label="Settings" id="${prefix}-ctl"><h2>Your city</h2></aside>
+      <div class="col">
+      <main class="panel" aria-live="polite">
+        <div class="verdict" id="${prefix}-v"></div>
+        <div class="alloc"><div class="alloc-bar" id="${prefix}-bar" role="img" aria-label="Workforce split"></div><div class="alloc-legend" id="${prefix}-leg"></div></div>
+        <div class="tiles" id="${prefix}-tiles"></div>
+        <div class="byp" id="${prefix}-byp"></div>
+        <div class="cmp-wrap"><table class="cmp" id="${prefix}-cmp"></table></div>
+      </main>
+      <section class="panel" aria-label="What more research would buy">
+        <h2><img class="px" src="${IC.tech0 && IC.innov_book}" alt="">What more research would buy</h2>
+        <p class="hint">${cfg.moreHint}</p>
+        <div class="cmp-wrap"><table class="cmp" id="${prefix}-more"></table></div>
+      </section>
+      </div>
+    </div>
+    <section class="panel"><details class="notes"><summary>How the numbers are worked out</summary><ul>${cfg.notes.map(n=>`<li>${n}</li>`).join('')}</ul></details></section>`;
+  return {
+    ctl: root.querySelector(`#${prefix}-ctl`), tgl: root.querySelector(`#${prefix}-tgl`), pay: root.querySelector(`#${prefix}-pay`), earn:{},
+    v: root.querySelector(`#${prefix}-v`), bar: root.querySelector(`#${prefix}-bar`), leg: root.querySelector(`#${prefix}-leg`),
+    tiles: root.querySelector(`#${prefix}-tiles`), byp: root.querySelector(`#${prefix}-byp`),
+    cmp: root.querySelector(`#${prefix}-cmp`), more: root.querySelector(`#${prefix}-more`),
+  };
+}
+
+function drawAlloc(D, segs){
+  D.bar.innerHTML = segs.filter(s=>s.n>0).map(s=>`<div style="flex-grow:${s.n};background:${s.color}" title="${s.label}"></div>`).join('');
+  D.leg.innerHTML = segs.map(s=>`<span><span class="sw" style="background:${s.color}"></span><img class="px" src="${IC[s.ic]}" alt="">${s.label} <b>${fmt(s.n)}</b></span>`).join('');
+}
+const drawTiles = (D, t) => { D.tiles.innerHTML = t.map(([k,v,s])=>`<div class="tile"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join(''); };
+function drawTable(tbl, cols, rows){
+  tbl.innerHTML = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`+
+    rows.map(r=>`<tr class="${r.best?'best':''}">${r.cells.map((v,i)=>i===0?`<td>${v}</td>`:`<td data-label="${cols[i]}">${v}</td>`).join('')}</tr>`).join('')+`</tbody>`;
+}
+function renderVerdictBox(D, yes, tag, head, body){
+  D.v.className='verdict '+(yes?'yes':'no');
+  D.v.innerHTML=`<span class="tag">${tag}</span><h3>${head}</h3><p>${body}</p>`;
+}
+const SEG = { room:'var(--innov)', p1:'var(--clay)', p2:'var(--good)', haul:'var(--haul)' };
+
+/* Payback summary: what a group of trees cost and what it adds, compared with having none of it */
+function drawPay(D, rows, unit){
+  D.pay.innerHTML = rows.filter(r=>r.cost.i||r.cost.k).map(r=>{
+    const per = r.cost.i && !r.cost.k && r.gain>0.05 ? `<span class="per">${fmt(100*r.gain/r.cost.i,1)} ${unit} per 100 innovation</span>` : '';
+    return `<div class="payrow"><span class="lbl">${r.label}</span>
+      <span>spent <b class="spend i">${costText(r.cost)}</b></span><span class="arrow">→</span>
+      ${r.gain>0.05
+        ? `<span>in exchange <b class="spend g">+${fmt(r.gain,1)} ${unit}</b>${badge(r.cost, r.gain, unit, !!r.direct)}</span>`
+        : `<span><b class="spend z">not contributing to ${unit}</b>${badge(r.cost, r.gain, unit, !!r.direct)}</span>`}${per}</div>`;
+  }).join('') + (D.pay.dataset.note ? `<p class="hint">${D.pay.dataset.note}</p>` : '');
+}
+/* ---------- Claude's verdict badges ----------
+   Exchange rate from what each point costs in workers, mid-to-late game:
+   1 admin ≈ 1.4 knowledge ≈ 1.9 innovation (labs end up cheapest, admin dearest). */
+const XR = {innovation:1, knowledge:1.4, admin:1.9};
+function badge(cost, gain, unit, direct=false){
+  const costV = (cost.i||0)*XR.innovation + (cost.k||0)*XR.knowledge;
+  if(!costV) return '';
+  const gainV = Math.max(0,gain)*XR[unit], r = gainV/costV;
+  const cls = gain<=0.05 ? 'r' : r>=1.25 ? 'g' : r>=0.8 ? 'o' : 'r';
+  const head = {g:'Claude thinks this is worth it.', o:'Claude thinks this might be worth it.', r:"Claude thinks this isn't worth it."}[cls];
+  const costIn = costText(cost);
+  const assume = direct ? `It costs ${costIn}` : `Assuming you've researched this purely to get more ${unit} (a big assumption), it costs ${costIn}`;
+  const why = gain<=0.05
+    ? `${assume} and adds nothing at your current settings.`
+    : `${assume} and adds ${fmt(gain,1)} ${unit}. At about 1 admin ≈ 1.4 knowledge ≈ 1.9 innovation, the return is ${fmt(r,2)}×.`;
+  const tail = cls==='o' ? ' A close call: it comes down to which you are shorter of.' : '';
+  const tip = `<b class="h ${cls}">${head}</b>${why}${tail}<small>The rate is what each point costs in workers once labs, libraries and admin are well researched. Nobles pull it towards 1 : 1 : 1.</small>`;
+  return `<span class="vb ${cls}" tabindex="0" role="img" aria-label="${head}" data-tip="${tip.replace(/"/g,'&quot;')}">i</span>`;
+}
+{ // one floating tooltip for every badge: hover or focus on desktop, tap on touch
+  const tip = document.createElement('div'); tip.className='vtip'; tip.hidden=true; document.body.appendChild(tip);
+  let pinned=null;
+  const show = b => {
+    tip.innerHTML=b.dataset.tip; tip.hidden=false;
+    const r=b.getBoundingClientRect(), w=tip.offsetWidth, h=tip.offsetHeight;
+    let x=clamp(r.left+r.width/2-w/2, 12, innerWidth-w-12), y=r.top-h-8;
+    if(y<8) y=r.bottom+8;
+    tip.style.left=x+'px'; tip.style.top=y+'px';
+  };
+  const hide = () => { tip.hidden=true; pinned=null; };
+  document.addEventListener('mouseover', e=>{ const b=e.target.closest('.vb, .tipped'); if(b && !matchMedia('(hover: none)').matches) show(b); });
+  document.addEventListener('mouseout', e=>{ const b=e.target.closest('.vb, .tipped'); if(b && !pinned) tip.hidden=true; });
+  document.addEventListener('focusin', e=>{ const b=e.target.closest('.vb, .tipped'); if(b) show(b); });
+  document.addEventListener('focusout', e=>{ if(e.target.closest('.vb, .tipped')) hide(); });
+  document.addEventListener('click', e=>{ const b=e.target.closest('.vb'); if(b){ if(pinned===b) hide(); else { pinned=b; show(b); } } else if(pinned) hide(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') hide(); });
+  addEventListener('scroll', ()=>{ if(!tip.hidden) hide(); }, {passive:true});
+}
+
+const addCost = (...cs) => cs.reduce((a,c)=>({i:a.i+(c.i||0), k:a.k+(c.k||0)}), {i:0,k:0});
+
+/* =====================================================================
+   LEATHER -> LIBRARIES
+   ===================================================================== */
+const HUNT_P = techPath([
+  {name:'Hunting', lv:8, ov:'tech0', eff:'+50% hunter output', cost:[4,8,12,16,20,24,28,32], add:0.5},
+]);
+const AUR_P = techPath([
+  {name:'Basic Auroch breeding',          lv:7,  ov:'tech0',  eff:'+15% output',          cost:[4],  add:0.15},
+  {name:'Auroch breeding Tools',          lv:2,  ov:'tools',  eff:'+1 tool slot (+25%)',  cost:[6],  add:0.25},
+  {name:'Skilled Auroch breeding',        lv:10, ov:'tech1',  eff:'+15% output',          cost:[9],  add:0.15},
+  {name:'Proficient Auroch breeding',     lv:7,  ov:'tech2',  eff:'+15% output',          cost:[15], add:0.15},
+  {name:'Advanced Auroch breeding Tools', lv:2,  ov:'tools2', eff:'+1 tool slot (+25%)',  cost:[22], add:0.25},
+  {name:'Expert Auroch breeding',         lv:10, ov:'tech3',  eff:'+16% output',          cost:[21], add:0.16},
+]);
+
+const LS = loadState('claypit-leather', {
+  W:400, rLib:1, rHun:1, rPas:1, climate:'temperate', lo:0.10, n0:0, libUp:false, kH:0, kA:0,
+  nLib:{on:false,gran:false,count:1,rank:0}, nPas:{on:false,gran:false,count:1,rank:0},
+});
+
+LS.n0 = 0; // no separate meat hunters: the leather hunters are the only ones
+
+function leatherModel(L){
+  const ed=S.ed, W=L.W, o=L.lo;
+  const libS = l => (1 + (L.libUp?0.5:0) + 3*clamp((l-50)/950,0,1) + nobleAdd(L.nLib,l)) * L.rLib;
+  const hunBase = (1 + HUNT_P.add[L.kH]) * L.rHun * (L.climate==='cold'?1.2:1);
+  const hEff = N => N<=15 ? 1 : 1/(1+(N-15)/60);
+  const hunLeather = h => h*1.4*hunBase*hEff(L.n0+h);
+  const aurMul = L.climate==='temperate' ? 1.25 : 0.75;
+  const aurRate = a => 0.56*(1 + AUR_P.add[L.kA] + clamp((a-50)/950,0,1) + nobleAdd(L.nPas,a)) * L.rPas * aurMul;
+  const ev = (h,a) => {
+    const haul = (h+a)>0 ? Math.ceil(o*(h+a)-1e-9) : 0, l = W-h-a-haul;
+    if(l<=0 || h<0 || a<0) return null;
+    const s=libS(l), hl=hunLeather(h), al=a*aurRate(a), supply=hl+al, demand=l*0.5*2*s;
+    const f = demand>0 ? Math.min(1, supply/demand) : 0;
+    return {h,a,haul,l,s,hl,al,supply,demand,f,out:ed*l*s*(1+f)};
+  };
+  const maxA = h => { let a=Math.max(0,Math.floor((W-h*(1+o)-1)/(1+o))+2); while(a>0 && !ev(h,a)) a--; return ev(h,a)?a:-1; };
+  // For a given hunter count the best auroch count is 0 or the smallest count that fills every library.
+  const bestA = (h, allowA=true) => {
+    const z=ev(h,0); if(!z) return null;
+    if(!allowA || z.f>=1) return z;
+    const top=maxA(h); if(top<=0) return z;
+    let cand=[z];
+    if(ev(h,top).f<1) cand.push(ev(h,top));
+    else { let lo=0, hi=top; while(lo<hi){ const m=(lo+hi)>>1; if(ev(h,m).f>=1) hi=m; else lo=m+1; } cand.push(ev(h,lo)); if(lo>0) cand.push(ev(h,lo-1)); }
+    return cand.reduce((b,r)=>r.out>b.out?r:b);
+  };
+  const solve = ({hunt=true, aur=true}={}) => {
+    let best=null;
+    for(let h=0; h<=(hunt?W:0); h++){
+      const r=bestA(h, aur); if(!r) break;
+      if(!best || r.out>best.out+1e-9) best=r;
+    }
+    return best;
+  };
+  return {ev, solve, libS, hunBase, hEff, hunLeather, aurRate, aurMul};
+}
+
+const LD = buildTab('leather', {
+  sliders:[{key:'hunt',title:'Hunter tech',sub:'Husbandry tree, paid in innovation'},{key:'aur',title:'Auroch pen tech',sub:'Husbandry tree, paid in innovation'}],
+  moreHint:'Extra knowledge from researching more, at your current settings, with the workforce re-split for the new tech. The cost stays tied up for as long as you keep the tech. You decide whether the knowledge is worth the innovation.',
+  notes:[
+    '<b>Knowledge is a standing total</b>, like innovation: the libraries hold it at a level set by their workers, and tech costs are held out of it for as long as you keep the tech. So Advanced Library (100 knowledge) is worth it exactly when it adds more than 100, and the calculator applies it when it does.',
+    '<b>Library output per worker</b> = (1 + Advanced Library [+50%] + experience + noble) × race. Leather in stock doubles the room (×2).',
+    '<b>Leather burned</b> = 0.5 per librarian per day × that worker\'s full output, including the ×2. So while leather is short, each leather adds exactly 1 knowledge (× education).',
+    '<b>Hunter</b>: 1.4 leather per worker per day × (1 + 50% per Hunting level) × race × 1.2 in cold climates. Hunting meat makes 2.2 meat instead. <b>Soft cap</b>: once your city has more than 15 hunters, every hunter is scaled by 1 / (1 + (hunters − 15) / 60). The calculator treats the leather hunters as your only hunters. Hunters have no tools, noble office or experience bonus. The game\'s yearly "luck" (×0.6 to ×1.4) averages out and is left out.',
+    '<b>Auroch pen</b>: 0.56 leather and 0.56 meat per worker per day (plus a little livestock) × (1 + tech + tools + experience + noble) × race × 1.25 in temperate climates (×0.75 in cold or hot). No cap. Assumes pens are fully stocked and sized for their workers.',
+    '<b>Experience</b>: libraries gain up to +300% as librarians rise from 50 to 1,000. Auroch pens gain up to +100% from 50 to 1,000.',
+    '<b>Education</b> (×1 to ×2) multiplies the city\'s knowledge, so it doesn\'t burn more leather. <b>Haulers</b> = (hunters + auroch hands) × logistics overhead, rounded up.',
+    '<b>ⓘ verdicts</b> convert costs and gains at about 1 admin ≈ 1.4 knowledge ≈ 1.9 innovation: what each point costs in workers once the rooms are well researched. Green is 1.25× or better, orange 0.8–1.25×, red below 0.8×.',
+    '<b>Not modelled</b>: room layout efficiency, degradation, pasture irrigation and weather, tool wear, building costs, and flat bonuses such as city rank (they add the same with or without leather, so they do not change the answer, but the percentages leave them out).',
+  ],
+});
+
+{
+  const on = ()=>leatherUpdate();
+  addRange(LD.ctl, {id:'lw', icon:'library', label:'Workforce to assign', primary:true, wf:true, get:()=>LS.W, set:v=>LS.W=v, show:v=>fmt(v), ends:['10','400','2,000'], onChange:on});
+  addRange(LD.ctl, {id:'lrl', icon:'library', label:'Library race bonus', min:0.6, max:1.25, step:0.01, get:()=>LS.rLib, set:v=>LS.rLib=v, show:v=>'×'+v.toFixed(2), ends:['×0.60 Garthimi','Human ×1.25'], onChange:on});
+  addRange(LD.ctl, {id:'lrh', icon:'hunter', label:'Hunter race bonus', min:1, max:1.2, step:0.01, get:()=>LS.rHun, set:v=>LS.rHun=v, show:v=>'×'+v.toFixed(2), ends:['×1.00 most races','Garthimi, Tilapi ×1.20'], onChange:on});
+  addRange(LD.ctl, {id:'lrp', icon:'auroch', label:'Auroch pen race bonus', min:0.75, max:1.2, step:0.01, get:()=>LS.rPas, set:v=>LS.rPas=v, show:v=>'×'+v.toFixed(2), ends:['×0.75 Garthimi','Tilapi ×1.20'], onChange:on});
+  { // climate: the game's own climate icons, hover for what each does
+    const CL = {
+      cold:      {name:'Cold',      hun:'×1.2',  aur:'×0.75'},
+      temperate: {name:'Temperate', hun:'×1.0',  aur:'×1.25'},
+      hot:       {name:'Hot',       hun:'×1.0',  aur:'×0.75'},
+    };
+    const box = el(`<div class="ctl"><div class="ctl-head"><img class="px" src="${IC['cl_'+LS.climate]}" alt="" id="lclim-ic"><label>Climate</label><output id="lclim-o"></output></div>
+      <div class="climico" role="group" aria-label="Climate">${Object.entries(CL).map(([k,c])=>`<button type="button" class="tipped" data-c="${k}" aria-label="${c.name}"
+        data-tip="<b class=&quot;h&quot;>${c.name}</b>Hunters ${c.hun}. Auroch pens ${c.aur}.<small>Only hunters and auroch pens react to climate. Libraries, labs, admin and the other producers don't.</small>"><img src="${IC['cl_'+k]}" alt=""></button>`).join('')}</div></div>`);
+    LD.ctl.appendChild(box);
+    const mark=()=>{ box.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.c===LS.climate)); box.querySelector('#lclim-o').textContent=CL[LS.climate].name; box.querySelector('#lclim-ic').src=IC['cl_'+LS.climate]; };
+    box.querySelectorAll('button').forEach(b=>b.onclick=()=>{ LS.climate=b.dataset.c; mark(); on(); });
+    mark();
+  }
+  addRange(LD.ctl, {id:'llo', icon:'cart', label:'Logistics overhead', min:0, max:50, step:1, scale:100, get:()=>LS.lo, set:v=>LS.lo=v, show:v=>Math.round(v*100)+'%', ends:['0%','50% extra haulers per producer'], onChange:on});
+  addNoble(LD.ctl, 'lnb-lib', LS.nLib, 'library', 'Master of Libraries', 'librarians', on);
+  addNoble(LD.ctl, 'lnb-pas', LS.nPas, 'auroch', 'Master of Auroch pens', 'auroch hands', on);
+  LD.huntS = slider('leather-ts-hunt', HUNT_P, {label:'Hunter tech level', fg:'hunter', set:k=>LS.kH=k, onChange:on, none:'No Hunting tech', bonusLabel:'Hunter bonus from tech', bonus:k=>'+'+fmt(HUNT_P.add[k]*100)+'%', earn:()=>({v:LD.earn.hunt, unit:'knowledge'})});
+  LD.aurS = slider('leather-ts-aur', AUR_P, {label:'Auroch pen tech level', fg:'auroch', bg:'bgpasture', set:k=>LS.kA=k, onChange:on, none:'No auroch tech', bonusLabel:'Auroch bonus from tech', bonus:k=>'+'+fmt(AUR_P.add[k]*100)+'%', earn:()=>({v:LD.earn.aur, unit:'knowledge'})});
+}
+
+/* Advanced Library costs 100 knowledge and pays back in knowledge, so it is worth it
+   exactly when it adds more than 100. The calculator decides it and applies it. */
+const LIB_UP_COST = 100;
+const libUpGain = st => leatherModel(Object.assign({}, st, {libUp:true})).solve().out - leatherModel(Object.assign({}, st, {libUp:false})).solve().out;
+function libUpAdvice(){
+  const g = libUpGain(LS), worth = g > LIB_UP_COST;
+  let from = null;
+  if(!worth && libUpGain(Object.assign({}, LS, {W:2000})) > LIB_UP_COST){
+    let lo=LS.W, hi=2000;                       // smallest workforce where it pays
+    while(hi-lo>5){ const m=Math.round((lo+hi)/2); if(libUpGain(Object.assign({}, LS, {W:m}))>LIB_UP_COST) hi=m; else lo=m; }
+    const r = leatherModel(Object.assign({}, LS, {W:hi, libUp:true})).solve();
+    from = {W:hi, l:r.l};
+  }
+  return {g, worth, from};
+}
+function drawLibAdvice(a){
+  const body = a.worth
+    ? `<b style="color:var(--good)">Research it.</b> It adds <b class="num">+${fmt(a.g,1)}</b> knowledge for its ${LIB_UP_COST}, so you come out <b class="num">${fmt(a.g-LIB_UP_COST,1)}</b> ahead. The results below include it.`
+    : `<b style="color:var(--bad)">Not yet.</b> It adds only <b class="num">+${fmt(a.g,1)}</b> knowledge, less than its ${LIB_UP_COST} cost. ` +
+      (a.from ? `At these settings it pays once you assign about <b class="num">${fmt(a.from.W)}</b> workers (about <b class="num">${fmt(a.from.l)}</b> librarians).`
+              : `At these settings it doesn't pay even with 2,000 workers.`) + ` The results below leave it out.`;
+  LD.tgl.innerHTML = `<div class="advice ${a.worth?'yes':'no'}">${ticon('library','up1')}<div><div class="nm">Advanced Library <span class="muted">· library upgrade, +50% · ${LIB_UP_COST} knowledge</span></div><div class="meta">${body}</div></div></div>`;
+}
+
+function leatherUpdate(){
+  if(ACTIVE!=='leather') return;
+  const adv = libUpAdvice(); LS.libUp = adv.worth; drawLibAdvice(adv);
+  const M = leatherModel(LS);
+  const none = M.ev(0,0), best = M.solve(), huntOnly = M.solve({aur:false}), aurOnly = M.solve({hunt:false});
+  const gain = best.out-none.out, yes = (best.h+best.a)>0 && gain>0.05;
+  const use = yes ? best : none, ed=S.ed;
+
+  if(yes){
+    const src = [best.h?`<b>${fmt(best.h)}</b> hunter${best.h>1?'s':''}`:'', best.a?`<b>${fmt(best.a)}</b> on auroch pens`:''].filter(Boolean).join(' and ');
+    renderVerdictBox(LD, true, 'Burn leather', `<span class="num">+${fmt(gain)}</span> knowledge <span class="muted" style="font-size:1rem">(${pct(gain/none.out)} over all libraries)</span>`,
+      `Put ${src}${best.haul?`, <b>${fmt(best.haul)}</b> hauling`:''}, and <b>${fmt(best.l)}</b> in libraries. Leather covers ${fmt(best.f*100,0)}% of what the libraries could burn.`);
+  } else {
+    renderVerdictBox(LD, false, 'Skip leather', `Put all <span class="num">${fmt(LS.W)}</span> workers in libraries`,
+      `No mix of hunters and auroch pens beats running the libraries without leather. All libraries gives <b class="num">${fmt(none.out)}</b> knowledge.`);
+  }
+  drawAlloc(LD, [
+    {ic:'library', label:'Libraries', n:use.l, color:SEG.room},
+    {ic:'hunter', label:'Hunters', n:use.h, color:SEG.p1},
+    {ic:'auroch', label:'Auroch pens', n:use.a, color:SEG.p2},
+    {ic:'cart', label:'Haulers', n:use.haul, color:SEG.haul},
+  ]);
+  if(ACTIVE==='leather') setMbar(yes, 'leather', yes?'+'+fmt(gain)+' knowledge':fmt(none.out)+' knowledge',
+    [['library',use.l],['hunter',use.h],['auroch',use.a],['cart',use.haul]]);
+
+  const lw = use.l, s = M.libS(lw);
+  const hPer = best.h ? best.hl/best.h : M.hunLeather(1);
+  const aPer = M.aurRate(Math.max(best.a,1));
+  drawTiles(LD, [
+    ['Librarian, no leather', fmt(ed*s,2), 'knowledge each'],
+    ['Librarian, with leather', fmt(2*ed*s,2), `burns ${fmt(s,2)} leather/day`],
+    ['Hunter', fmt(hPer,2), `leather/day${(LS.n0+Math.max(best.h,1))>15?' (past the soft cap)':''}`],
+    ['Auroch hand', fmt(aPer,2), `leather + ${fmt(aPer,2)} meat/day`],
+  ]);
+
+  // by-products and opportunity cost
+  const rows=[];
+  if(use.h>0){
+    const forgone = use.h*2.2*M.hunBase*M.hEff(use.h);   // what these hunters would make on the meat recipe
+    rows.push(`<div class="row minus"><img class="px" src="${IC.hunter}" alt=""><span class="t">By having your hunters supply the libraries, you are missing out on ${fmt(forgone,1)} meat per day.</span><span class="v">−${fmt(forgone,1)}/day</span></div>`);
+  }
+  if(use.a>0){
+    const meat=use.al, stock=use.al*0.0875/0.56;
+    rows.push(`<div class="row plus"><img class="px" src="${IC.meat}" alt=""><span class="t">As a bonus, this distribution nets you ${fmt(meat,1)} meat per day.<small>Plus about ${fmt(stock,1)} livestock a day from the auroch pens.</small></span><span class="v">+${fmt(meat,1)}/day</span></div>`);
+  }
+  LD.byp.innerHTML = rows.join('');
+
+  const cols=['Option','Libraries','Hunters','Auroch hands','Haulers','Knowledge','vs all libraries'];
+  const opts=[['All libraries, no leather',none],['Hunters only',huntOnly],['Auroch pens only',aurOnly]];
+  if(best!==huntOnly && best!==aurOnly && best.h && best.a) opts.push(['Best mix',best]);
+  const top=Math.max(...opts.map(o=>o[1].out));
+  drawTable(LD.cmp, cols, opts.map(([n,r])=>({best:Math.abs(r.out-top)<1e-6, cells:[n,fmt(r.l),fmt(r.h),fmt(r.a),fmt(r.haul),fmt(r.out),r===none?'–':pct(r.out/none.out-1)]})));
+
+  // what more research buys
+  const more=[], base=best.out;
+  const tryState = (name, patch, cost) => {
+    const st=Object.assign({}, LS, patch); const r=leatherModel(st).solve(); const g=r.out-base;
+    const c = (cost.i||0)+(cost.k||0);
+    more.push({cells:[name, costText(cost)+badge(cost, g, 'knowledge'), (g>=0.05?'+':'')+fmt(g,1), c&&g>0.05&&!(cost.i&&cost.k)?fmt(100*g/c,1):'–']});
+  };
+  if(LS.kH<HUNT_P.N){ tryState(`Next level: Hunting ${LS.kH+1}/8`, {kH:LS.kH+1}, costBetween(HUNT_P,LS.kH,LS.kH+1));
+    if(LS.kH<HUNT_P.N-1) tryState('Hunting to 8/8', {kH:HUNT_P.N}, costBetween(HUNT_P,LS.kH,HUNT_P.N)); }
+  if(LS.kA<AUR_P.N){ tryState(`Next level: ${techAt(AUR_P.steps,AUR_P.techs,LS.kA+1).label}`, {kA:LS.kA+1}, costBetween(AUR_P,LS.kA,LS.kA+1));
+    const k5=Math.min(AUR_P.N,LS.kA+5); if(k5>LS.kA+1) tryState(`5 more auroch levels`, {kA:k5}, costBetween(AUR_P,LS.kA,k5));
+    if(AUR_P.N>k5) tryState('Auroch tree to the end', {kA:AUR_P.N}, costBetween(AUR_P,LS.kA,AUR_P.N)); }
+  drawTable(LD.more, ['Research','Cost','Knowledge gained','Per 100 spent'], more.length?more:[{cells:['Everything relevant is researched','–','–','–']}]);
+
+  // payback of the leather techs: current result minus the result without that tree
+  const without = patch => leatherModel(Object.assign({}, LS, patch)).solve().out;
+  LD.earn.hunt = LS.kH ? best.out - without({kH:0}) : 0;
+  LD.earn.aur  = LS.kA ? best.out - without({kA:0}) : 0;
+
+  LD.huntS.draw(LS.kH); LD.aurS.draw(LS.kA);
+  saveState('claypit-leather', LS);
+}
+MODULES.leather = leatherUpdate;
+
+/* =====================================================================
+   PAPER -> ADMIN
+   ===================================================================== */
+// Admin tree branches (tools and efficiency both hang off Paper Filing). Ordered by value per knowledge:
+// Efficiency 1 (10), Tools 1 (80), Tools 2 (100), then Efficiency 2-5 (60, 110, 160, 210).
+const ADM_P = techPath([
+  {name:'Administration Efficiency', lv:1, first:1, of:5, ov:'tech0', eff:'+10% output',         cost:[10],  add:0.10, cur:'knowledge'},
+  {name:'Admin tools',               lv:1, first:1, of:2, ov:'tools', eff:'+1 tool slot (+25%)', cost:[80],  add:0.25, cur:'knowledge'},
+  {name:'Admin tools',               lv:1, first:2, of:2, ov:'tools', eff:'+1 tool slot (+25%)', cost:[100], add:0.25, cur:'knowledge'},
+  {name:'Administration Efficiency', lv:4, first:2, of:5, ov:'tech0', eff:'+10% output',         cost:[60,110,160,210], add:0.10, cur:'knowledge'},
+]);
+const PAP_P = techPath([
+  {name:'The Papermaker',              lv:1,  ov:'up1',    eff:'Unlocks the paper workshop',   cost:[15], add:0},
+  {name:'Basic Paper making',          lv:5,  ov:'tech0',  eff:'+15% output',                  cost:[4],  add:0.15},
+  {name:'Paper making Tools',          lv:4,  ov:'tools',  eff:'+1 tool slot (+25%)',          cost:[5],  add:0.25},
+  {name:'Skilled Paper making',        lv:10, ov:'tech1',  eff:'+15% output',                  cost:[9],  add:0.15},
+  {name:'Proficient Paper making',     lv:5,  ov:'tech2',  eff:'+15% output',                  cost:[15], add:0.15},
+  {name:'Advanced Paper making Tools', lv:4,  ov:'tools2', eff:'+1 tool slot (+25%)',          cost:[19], add:0.25},
+  {name:'Expert Paper making',         lv:10, ov:'tech3',  eff:'+15% output',                  cost:[19], add:0.15},
+  {name:'Paper Excellence',            lv:4,  ov:'up2',    eff:'Wood use ÷ (1 + 0.1 per level)', cost:[35], add:0, cur:'knowledge', kind:'con'},
+]);
+const PAP_CON = [0]; PAP_P.steps.forEach((s,i)=>PAP_CON.push(PAP_CON[i]+(s.kind==='con'?1:0)));
+const WOOD_P = techPath([
+  {name:'Basic woodcutting',          lv:7,  ov:'tech0',  eff:'+15% output',         cost:[4],   add:0.15},
+  {name:'woodcutting Tools',          lv:2,  ov:'tools',  eff:'+1 tool slot (+25%)', cost:[6],   add:0.25},
+  {name:'Skilled woodcutting',        lv:10, ov:'tech1',  eff:'+15% output',         cost:[9],   add:0.15},
+  {name:'Proficient woodcutting',     lv:7,  ov:'tech2',  eff:'+15% output',         cost:[15],  add:0.15},
+  {name:'Advanced woodcutting Tools', lv:2,  ov:'tools2', eff:'+1 tool slot (+25%)', cost:[22],  add:0.25},
+  {name:'Expert woodcutting',         lv:4,  ov:'tech3',  eff:'+21% output',         cost:[21],  add:0.21},
+  {name:'Advanced Woodcutter',        lv:1,  ov:'up2',    eff:'Upgrade (+100%)',     cost:[126], add:1.0},
+]);
+
+const PS = loadState('claypit-paper', {
+  W:400, rAdm:1, rWs:1, rWood:1, lo:0.10, kAdm:0, paperTech:false, kPap:1, kWood:0,
+  nAdm:{on:false,gran:false,count:1,rank:0}, nWs:{on:false,gran:false,count:1,rank:0}, nWood:{on:false,gran:false,count:1,rank:0},
+});
+
+PS.rWs = clamp(PS.rWs, 0.75, 1.2); PS.rWood = clamp(PS.rWood, 1, 1.4);
+
+function paperModel(P){
+  const ed=S.ed, W=P.W, o=P.lo, cb=P.paperTech?1.25:1;
+  const admS = n => (1 + ADM_P.add[P.kAdm] + 1.0*clamp((n-50)/950,0,1) + nobleAdd(P.nAdm,n)) * P.rAdm;
+  const canPaper = P.kPap>0;
+  const paperRate = p => 0.75*(1 + PAP_P.add[P.kPap] + clamp((p-50)/950,0,1) + nobleAdd(P.nWs,p)) * P.rWs;
+  const woodPerPaper = (2/0.75)/(1+0.1*PAP_CON[P.kPap]);
+  const woodRate = w => 4*(1 + WOOD_P.add[P.kWood] + clamp((w-50)/950,0,1) + nobleAdd(P.nWood,w)) * P.rWood;
+  const cutters = wood => {
+    if(wood<=0) return 0;
+    let w=Math.max(1,Math.ceil(wood/woodRate(1)));
+    for(let i=0;i<4;i++) w=Math.max(1,Math.ceil(wood/woodRate(w)));
+    while(w>1 && (w-1)*woodRate(w-1)>=wood) w--;
+    while(w*woodRate(w)<wood) w++;
+    return w;
+  };
+  const ev = p => {
+    const paper = p>0 ? p*paperRate(p) : 0, wood = paper*woodPerPaper, w = cutters(wood);
+    const haul = (p+w)>0 ? Math.ceil(o*(p+w)-1e-9) : 0, n = W-p-w-haul;
+    if(n<=0) return null;
+    const s=admS(n), demand=n*1*3*s/cb, f=demand>0?Math.min(1,paper/demand):0;
+    return {p,w,haul,n,s,paper,wood,demand,f,out:ed*n*s*(1+2*f)};
+  };
+  const solve = () => {
+    let best=ev(0);
+    if(canPaper) for(let p=1;p<=W;p++){ const r=ev(p); if(!r) break; if(r.out>best.out+1e-9) best=r; if(r.f>=1 && r.out<best.out-1) break; }
+    return best;
+  };
+  return {ev, solve, admS, paperRate, woodRate, woodPerPaper, cb};
+}
+
+const PD = buildTab('paper', {
+  sliders:[{key:'adm',title:'Administration tech',sub:'Science tree, paid in knowledge'},{key:'pap',title:'Paper workshop tech',sub:'Workshop tree, paid in innovation (Paper Excellence in knowledge)'},{key:'wood',title:'Woodcutter tech',sub:'Mines tree, paid in innovation'}],
+  moreHint:'Extra admin from researching more, at your current settings, with the workforce re-split for the new tech. The cost stays tied up for as long as you keep the tech. You decide whether the admin is worth the innovation or knowledge.',
+  notes:[
+    '<b>Admin is a standing total</b>, like innovation and knowledge: the admin rooms hold it at a level set by their workers. Tech costs are held out of your innovation or knowledge for as long as you keep the tech.',
+    '<b>Admin output per worker</b> = (1 + tools [+25% per level] + Administration Efficiency [+10% per level] + experience + noble) × race. Paper in stock triples the room (×3).',
+    '<b>Paper burned</b> = 1 per admin worker per day × that worker\'s full output, including the ×3, divided by 1.25 with Paper Handling. While paper is short, each paper adds 2/3 admin (5/6 with Paper Handling), × education.',
+    '<b>Admin tech slider order</b>: tools and efficiency are separate branches, so the slider uses the best order per knowledge spent: Efficiency 1, Tools 1, Tools 2, then Efficiency 2–5. Paper Handling (200 knowledge) is the tick box.',
+    '<b>Paper workshop</b>: 0.75 paper per worker per day × (1 + tech + tools + experience + noble) × race, from 2 wood per 0.75 paper (2.67 wood per paper, divided by 1 + 0.1 per Paper Excellence level, so −29% at level 4). Workshops hold 8 tools, so full tools add +200%.',
+    '<b>Woodcutter</b>: 4 wood per worker per day × (1 + tech + tools + upgrade + experience + noble) × race. Only as many woodcutters as the paper needs are used. Assumes enough forest, normal weather and no irrigation.',
+    '<b>Experience</b>: admin, paper workshops and woodcutters each gain up to +100% as their workers rise from 50 to 1,000.',
+    '<b>Education</b> (×1 to ×2) multiplies the city\'s admin, so it doesn\'t burn more paper. <b>Haulers</b> = (paper workers + woodcutters) × logistics overhead, rounded up.',
+    '<b>ⓘ verdicts</b> convert costs and gains at about 1 admin ≈ 1.4 knowledge ≈ 1.9 innovation: what each point costs in workers once the rooms are well researched. Green is 1.25× or better, orange 0.8–1.25×, red below 0.8×. Admin tech gets no "Assuming…" line because it only ever produces admin.',
+    '<b>Not modelled</b>: room layout efficiency, degradation, tool wear, building costs, selling spare wood or paper, and flat bonuses such as city rank (they add the same with or without paper, so they do not change the answer, but the percentages leave them out).',
+  ],
+});
+
+{
+  const on = ()=>paperUpdate();
+  addRange(PD.ctl, {id:'pw', icon:'admin', label:'Workforce to assign', primary:true, wf:true, get:()=>PS.W, set:v=>PS.W=v, show:v=>fmt(v), ends:['10','400','2,000'], onChange:on});
+  addRange(PD.ctl, {id:'pra', icon:'admin', label:'Admin race bonus', min:0.6, max:1.25, step:0.01, get:()=>PS.rAdm, set:v=>PS.rAdm=v, show:v=>'×'+v.toFixed(2), ends:['×0.60 Garthimi','Human ×1.25'], onChange:on});
+  addRange(PD.ctl, {id:'prs', icon:'paperws', label:'Paper workshop race bonus', min:0.75, max:1.2, step:0.01, get:()=>PS.rWs, set:v=>PS.rWs=v, show:v=>'×'+v.toFixed(2), ends:['×0.75 Garthimi','Dondorian ×1.20'], onChange:on});
+  addRange(PD.ctl, {id:'prw', icon:'woodcutter', label:'Woodcutter race bonus', min:1, max:1.4, step:0.01, get:()=>PS.rWood, set:v=>PS.rWood=v, show:v=>'×'+v.toFixed(2), ends:['×1.00 most races','Tilapi ×1.40'], onChange:on});
+  addRange(PD.ctl, {id:'plo', icon:'cart', label:'Logistics overhead', min:0, max:50, step:1, scale:100, get:()=>PS.lo, set:v=>PS.lo=v, show:v=>Math.round(v*100)+'%', ends:['0%','50% extra haulers per producer'], onChange:on});
+  addNoble(PD.ctl, 'pnb-adm', PS.nAdm, 'admin', 'Master of Administration', 'admin workers', on);
+  addNoble(PD.ctl, 'pnb-ws', PS.nWs, 'paperws', 'Master of Paper workshops', 'paper workers', on);
+  addNoble(PD.ctl, 'pnb-wood', PS.nWood, 'woodcutter', 'Master of Woodcutters', 'woodcutters', on);
+  addToggle(PD.tgl, {id:'pptech', fg:'admin', ov:'tech1', name:'Paper Handling', meta:'Admin uses 20% less paper (÷1.25) · 200 knowledge', get:()=>PS.paperTech, set:v=>PS.paperTech=v, onChange:on});
+  PD.admS = slider('paper-ts-adm', ADM_P, {direct:true, label:'Administration tech level', fg:'admin', set:k=>PS.kAdm=k, onChange:on, none:'No admin tech', noneMeta:'Paper Filing only', bonusLabel:'Admin bonus from tech', bonus:k=>'+'+fmt(ADM_P.add[k]*100)+'%', earn:()=>({v:PD.earn.adm, unit:'admin'})});
+  PD.papS = slider('paper-ts-pap', PAP_P, {label:'Paper workshop tech level', fg:'paperws', set:k=>PS.kPap=k, onChange:on, none:'No paper workshop', noneMeta:'Research The Papermaker to make paper', bonusLabel:'Paper bonus from tech', bonus:k=>'+'+fmt(PAP_P.add[k]*100)+'%'+(PAP_CON[k]?`, wood −${fmt(100-100/(1+0.1*PAP_CON[k]))}%`:''), earn:()=>({v:PD.earn.pap, unit:'admin'})});
+  PD.woodS = slider('paper-ts-wood', WOOD_P, {label:'Woodcutter tech level', fg:'woodcutter', set:k=>PS.kWood=k, onChange:on, none:'No woodcutting tech', bonusLabel:'Woodcutter bonus from tech', bonus:k=>'+'+fmt(WOOD_P.add[k]*100)+'%', earn:()=>({v:PD.earn.wood, unit:'admin'})});
+}
+
+function paperUpdate(){
+  if(ACTIVE!=='paper') return;
+  const M = paperModel(PS);
+  const none = M.ev(0), best = M.solve();
+  const gain = best.out-none.out, yes = best.p>0 && gain>0.05;
+  const use = yes ? best : none, ed=S.ed;
+
+  if(PS.kPap===0){
+    renderVerdictBox(PD, false, 'No paper yet', `Put all <span class="num">${fmt(PS.W)}</span> workers in admin`,
+      `You can't make paper until you research The Papermaker (15 innovation). Move the paper workshop slider to see whether paper would pay.`);
+  } else if(yes){
+    renderVerdictBox(PD, true, 'Burn paper', `<span class="num">+${fmt(gain)}</span> admin <span class="muted" style="font-size:1rem">(${pct(gain/none.out)} over all admin)</span>`,
+      `Put <b>${fmt(best.p)}</b> in paper workshops, <b>${fmt(best.w)}</b> cutting wood${best.haul?`, <b>${fmt(best.haul)}</b> hauling`:''}, and <b>${fmt(best.n)}</b> in administration. Paper covers ${fmt(best.f*100,0)}% of what admin could burn.`);
+  } else {
+    renderVerdictBox(PD, false, 'Skip paper', `Put all <span class="num">${fmt(PS.W)}</span> workers in admin`,
+      `No amount of paper making (with the woodcutters it needs) beats running admin without paper. All admin gives <b class="num">${fmt(none.out)}</b> admin.`);
+  }
+  drawAlloc(PD, [
+    {ic:'admin', label:'Admin', n:use.n, color:SEG.room},
+    {ic:'paperws', label:'Paper workshops', n:use.p, color:SEG.p1},
+    {ic:'woodcutter', label:'Woodcutters', n:use.w, color:SEG.p2},
+    {ic:'cart', label:'Haulers', n:use.haul, color:SEG.haul},
+  ]);
+  if(ACTIVE==='paper') setMbar(yes, 'paper', yes?'+'+fmt(gain)+' admin':fmt(none.out)+' admin',
+    [['admin',use.n],['paperws',use.p],['woodcutter',use.w],['cart',use.haul]]);
+
+  const s=M.admS(use.n), pr=M.paperRate(Math.max(use.p,1)), wr=M.woodRate(Math.max(use.w,1));
+  const workersPerPaper = (1+PS.lo)*(1/pr + M.woodPerPaper/wr);
+  drawTiles(PD, [
+    ['Admin worker, no paper', fmt(ed*s,2), 'admin each'],
+    ['Admin worker, with paper', fmt(3*ed*s,2), `burns ${fmt(3*s/M.cb,2)} paper/day`],
+    ['Paper worker', PS.kPap?fmt(pr,2):'–', PS.kPap?`paper/day from ${fmt(pr*M.woodPerPaper,1)} wood`:'not researched'],
+    ['Workers per paper', PS.kPap?fmt(workersPerPaper,2):'–', `incl. ${fmt(M.woodPerPaper/wr,2)} woodcutters and hauling`],
+  ]);
+  PD.byp.innerHTML = PS.kPap ? `<div class="row"><img class="px" src="${IC.paper}" alt=""><span class="t">What one paper is worth<small>While admin is short of paper, each paper adds ${fmt(2*M.cb/3*ed,2)} admin. An admin worker makes ${fmt(ed*s,2)} on their own, against ${fmt(workersPerPaper,2)} workers to make one paper.</small></span><span class="v">${fmt(2*M.cb/3*ed/workersPerPaper,2)}<small class="muted" style="font-size:.7rem"> admin/worker</small></span></div>` : '';
+
+  const cols=['Option','Admin','Paper workers','Woodcutters','Haulers','Admin output','vs all admin'];
+  const opts=[['All admin, no paper',none]]; if(PS.kPap) opts.push(['Best with paper',best]);
+  const top=Math.max(...opts.map(o=>o[1].out));
+  drawTable(PD.cmp, cols, opts.map(([n,r])=>({best:Math.abs(r.out-top)<1e-6, cells:[n,fmt(r.n),fmt(r.p),fmt(r.w),fmt(r.haul),fmt(r.out),r===none?'–':pct(r.out/none.out-1)]})));
+
+  const more=[], base=best.out;
+  const tryState = (name, patch, cost, direct=false) => {
+    const st=Object.assign({}, PS, patch); const r=paperModel(st).solve(); const g=r.out-base;
+    const c=(cost.i||0)+(cost.k||0);
+    more.push({cells:[name, costText(cost)+badge(cost, g, 'admin', direct), (g>=0.05?'+':'')+fmt(g,1), c&&g>0.05&&!(cost.i&&cost.k)?fmt(100*g/c,1):'–']});
+  };
+  const chain = (P, key, label, direct=false) => {
+    const k=PS[key]; if(k>=P.N) return;
+    tryState(`Next level: ${techAt(P.steps,P.techs,k+1).label}`, {[key]:k+1}, costBetween(P,k,k+1), direct);
+    const k5=Math.min(P.N,k+5); if(k5>k+1) tryState(`5 more ${label} levels`, {[key]:k5}, costBetween(P,k,k5), direct);
+    if(P.N>k5) tryState(`${label[0].toUpperCase()+label.slice(1)} tree to the end`, {[key]:P.N}, costBetween(P,k,P.N), direct);
+  };
+  if(!PS.paperTech) tryState('Paper Handling', {paperTech:true}, {k:200}, true);
+  chain(ADM_P,'kAdm','admin',true);
+  chain(PAP_P,'kPap','paper');
+  chain(WOOD_P,'kWood','woodcutting');
+  if(PS.kPap<PAP_P.N && PS.kWood<WOOD_P.N){
+    const c1=costBetween(PAP_P,PS.kPap,PAP_P.N), c2=costBetween(WOOD_P,PS.kWood,WOOD_P.N);
+    tryState('Paper and woodcutting trees both to the end', {kPap:PAP_P.N, kWood:WOOD_P.N}, {i:c1.i+c2.i, k:c1.k+c2.k});
+  }
+  drawTable(PD.more, ['Research','Cost','Admin gained','Per 100 spent'], more.length?more:[{cells:['Everything relevant is researched','–','–','–']}]);
+
+  // payback of each tree: current result minus the result without it
+  const without = patch => paperModel(Object.assign({}, PS, patch)).solve().out;
+  PD.earn.adm  = PS.kAdm  ? best.out - without({kAdm:0})  : 0;
+  PD.earn.pap  = PS.kPap  ? best.out - without({kPap:0})  : 0;
+  PD.earn.wood = PS.kWood ? best.out - without({kWood:0}) : 0;
+
+  PD.admS.draw(PS.kAdm); PD.papS.draw(PS.kPap); PD.woodS.draw(PS.kWood);
+  saveState('claypit-paper', PS);
+}
+MODULES.paper = paperUpdate;
+
+/* ---------- city-wide settings (above the tabs) ---------- */
+{
+  const ed=document.getElementById('ed'), edo=document.getElementById('ed-o');
+  ed.oninput=()=>{ S.ed=+ed.value; edo.textContent='×'+S.ed.toFixed(2); save(); refreshActive(); };
+}
+
+showTab(ACTIVE);
+
+</script>

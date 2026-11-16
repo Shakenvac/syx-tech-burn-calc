@@ -1,0 +1,896 @@
+<title>Syx Tech Burn Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control column on the left, verdict + chart on the right, both tech trees in a band underneath. */
+:root{
+  --bg:#e9ecf1; --panel:#ffffff; --panel-2:#f4f6f9; --ink:#1b2130; --muted:#5a6375; --line:#d3d9e2;
+  --clay:#a94b28; --clay-soft:#f3e0d6; --innov:#2c5cc0; --innov-soft:#dfe7f8;
+  --good:#23794a; --good-soft:#dcefe3; --warn:#b06a00; --bad:#a83838; --bad-soft:#f5dede; --haul:#8a7a52;
+  --bar:#9fb3db; --bar-base:#c9d1de;
+  --f-display:"Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#11151c; --panel:#191f29; --panel-2:#1f2733; --ink:#e5e9f0; --muted:#97a1b2; --line:#2c3543;
+  --clay:#dd7b52; --clay-soft:#3a2720; --innov:#7ea2f2; --innov-soft:#1f2b45;
+  --good:#5cc18a; --good-soft:#18301f; --warn:#e8a33d; --bad:#e57a7a; --bad-soft:#3a1f22; --haul:#c2b07f;
+  --bar:#3e5689; --bar-base:#2b3442; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#11151c; --panel:#191f29; --panel-2:#1f2733; --ink:#e5e9f0; --muted:#97a1b2; --line:#2c3543;
+  --clay:#dd7b52; --clay-soft:#3a2720; --innov:#7ea2f2; --innov-soft:#1f2b45;
+  --good:#5cc18a; --good-soft:#18301f; --warn:#e8a33d; --bad:#e57a7a; --bad-soft:#3a1f22; --haul:#c2b07f;
+  --bar:#3e5689; --bar-base:#2b3442; color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:18px}
+img.px{image-rendering:pixelated;image-rendering:crisp-edges}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+
+header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.crest{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px 8px}
+.crest img{width:40px;height:40px}
+header.top h1{font-size:1.75rem;font-weight:700;letter-spacing:.01em}
+header.top p{margin:2px 0 0;color:var(--muted);max-width:62ch}
+
+.grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.panel h2{font-size:1.02rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel h2 img{width:24px;height:24px}
+
+/* Controls */
+.ctl{display:grid;gap:4px;padding-block:10px;border-top:1px solid var(--line)}
+.ctl:first-of-type{border-top:0;padding-top:0}
+.ctl-head{display:flex;align-items:center;gap:8px}
+.ctl-head img{width:24px;height:24px;flex:none}
+.ctl-head label{font-weight:500;flex:1}
+.ctl-head output{font-family:var(--f-mono);font-weight:500;font-size:1rem;min-width:4.5ch;text-align:right}
+.ctl .ends{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted)}
+.ctl.primary{background:var(--innov-soft);margin:-4px -8px 4px;padding:12px 8px;border-radius:var(--r);border:0}
+.ctl.primary output{font-size:1.5rem;font-family:var(--f-display);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--clay);height:24px;margin:0;cursor:pointer}
+.ctl.primary input[type=range]{accent-color:var(--innov)}
+input[type=number]{width:4.2em;font:inherit;font-family:var(--f-mono);padding:2px 4px;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:4px}
+:focus-visible{outline:2px solid var(--innov);outline-offset:2px}
+
+.noble{display:grid;gap:6px;padding-block:10px;border-top:1px solid var(--line)}
+.noble .row{display:flex;align-items:center;gap:8px}
+.noble .row img{width:24px;height:24px}
+.noble label.tick{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;flex:1}
+.noble input[type=checkbox]{width:18px;height:18px;accent-color:var(--clay);margin:0}
+.noble .gran{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.86rem;color:var(--muted);padding-left:32px}
+.linkbtn{background:none;border:0;padding:0;color:var(--innov);font:inherit;font-size:.82rem;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.hint{font-size:.8rem;color:var(--muted);margin:0}
+
+/* Verdict */
+.verdict{border-radius:var(--r);padding:16px 18px;display:grid;gap:6px;border:1px solid transparent}
+.verdict.yes{background:var(--good-soft);border-color:color-mix(in srgb, var(--good) 35%, transparent)}
+.verdict.no{background:var(--bad-soft);border-color:color-mix(in srgb, var(--bad) 35%, transparent)}
+.verdict .tag{font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase}
+.verdict.yes .tag{color:var(--good)} .verdict.no .tag{color:var(--bad)}
+.verdict h3{font-size:1.6rem;font-weight:700}
+.verdict p{margin:0;max-width:70ch}
+
+.alloc{display:grid;gap:8px;margin-top:16px}
+.alloc-bar{display:flex;height:34px;border-radius:5px;overflow:hidden;gap:2px;background:var(--panel)}
+.alloc-bar div{min-width:0;transition:flex-grow .25s ease}
+.seg-lab{background:var(--innov)} .seg-mine{background:var(--clay)} .seg-haul{background:var(--haul)}
+.alloc-legend{display:flex;flex-wrap:wrap;gap:6px 20px}
+.alloc-legend span{display:flex;align-items:center;gap:6px}
+.alloc-legend img{width:24px;height:24px}
+.alloc-legend b{font-family:var(--f-mono);font-weight:500;font-size:1.05rem}
+.sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
+@media (max-width:640px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--panel-2);border-radius:var(--r);padding:10px 12px;display:grid;gap:2px;min-width:0}
+.tile .k{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tile .v{font-family:var(--f-mono);font-size:1.3rem;font-weight:500}
+.tile .s{font-size:.78rem;color:var(--muted)}
+
+.cmp{margin-top:16px;border-collapse:collapse;width:100%;font-size:.9rem}
+.cmp-wrap{overflow-x:auto}
+.cmp th,.cmp td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.cmp th:first-child,.cmp td:first-child{text-align:left;white-space:normal;min-width:11em}
+.cmp th{font-weight:500;color:var(--muted);font-size:.78rem;letter-spacing:.04em;text-transform:uppercase}
+.cmp td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.cmp td:first-child{font-family:var(--f-body)}
+.cmp tr.best td{font-weight:600}
+
+/* Chart */
+.chart-box{position:relative;margin-top:6px}
+.chart-box svg{width:100%;height:auto;display:block}
+.chart-box text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.chart-box .lbl{fill:var(--ink)}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font-size:.82rem;box-shadow:0 4px 14px rgba(0,0,0,.18);max-width:250px;z-index:2}
+.tip b{font-family:var(--f-display);font-weight:600}
+
+/* Tech sliders */
+.research{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:28px}
+@media (max-width:900px){.research{grid-template-columns:minmax(0,1fr)}}
+.ts{display:grid;gap:6px;min-width:0}
+.ts-title{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ts-title h3{font-size:.95rem}
+.ts-title .muted{font-size:.8rem}
+.ts-stage{position:relative;padding-top:74px}
+.bubble{position:absolute;top:0;left:0;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px 6px 6px;box-shadow:0 3px 10px rgba(0,0,0,.12);white-space:nowrap;transition:left .12s ease;max-width:100%}
+.bubble::after{content:"";position:absolute;bottom:-6px;left:var(--arrow,50%);width:10px;height:10px;background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.bubble .nm{font-size:.84rem;font-weight:600;line-height:1.2}
+.bubble .meta{font-size:.74rem;color:var(--muted);line-height:1.3}
+.bubble .opt{font-size:.74rem;color:var(--good);font-weight:500}
+.ticon{position:relative;width:40px;height:40px;flex:none}
+.ticon img{position:absolute;image-rendering:pixelated}
+.ticon .b{inset:0;width:40px;height:40px}
+.ticon .f{left:5px;top:5px;width:30px;height:30px}
+.ticon .o{inset:0;width:40px;height:40px}
+input.tech{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0;cursor:pointer}
+input.tech::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:var(--fill);border:1px solid var(--line)}
+input.tech::-moz-range-track{height:12px;border-radius:6px;background:var(--fill);border:1px solid var(--line)}
+input.tech::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-5px;border-radius:50%;background:var(--panel);border:3px solid var(--innov);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+input.tech::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--panel);border:3px solid var(--innov)}
+.ticks{position:relative;height:30px;margin:0 10px}
+.ticks span{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center}
+.ticks span::before{content:"";width:1px;height:6px;background:var(--muted)}
+.ticks .ticon{width:24px;height:24px;margin-top:2px}
+.ticks .ticon .b,.ticks .ticon .o{width:24px;height:24px}
+.ticks .ticon .f{left:3px;top:3px;width:18px;height:18px}
+.ticks{height:34px}
+.ts-foot{display:flex;justify-content:space-between;gap:10px;font-size:.78rem;color:var(--muted);flex-wrap:wrap}
+.ts-foot{align-items:baseline}
+.ts-foot b{font-family:var(--f-mono);font-weight:500;color:var(--ink)}
+.ts-foot b.spend{font-size:1.2rem;font-weight:700;padding:1px 7px;border-radius:4px;margin-left:2px}
+.spend.k{color:var(--innov);background:var(--innov-soft)}
+.spend.i{color:var(--clay);background:var(--clay-soft)}
+.spend.g{color:var(--good);background:var(--good-soft)}
+.info{position:relative;display:inline-flex}
+.info button{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font:600 12px/1 var(--f-display);cursor:help;padding:0}
+.info button:hover,.info button[aria-expanded="true"]{color:var(--panel);background:var(--innov);border-color:var(--innov)}
+.info .pop{position:absolute;top:28px;left:50%;transform:translateX(-50%);width:min(340px, 80vw);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,.2);font-size:.84rem;line-height:1.5;color:var(--ink);z-index:5;display:grid;gap:6px}
+.info .pop p{margin:0}
+@media (max-width:640px){.info .pop{left:auto;right:-40px;transform:none}}
+.key{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.key span{display:flex;align-items:center;gap:6px}
+.key i{width:14px;height:10px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
+
+details.notes{font-size:.86rem;color:var(--muted)}
+details.notes summary{cursor:pointer;color:var(--ink);font-weight:500}
+details.notes ul{padding-left:18px;margin:8px 0 0;display:grid;gap:4px;max-width:90ch}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* Tabs */
+.tabrow{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--line)}
+.tabs{display:flex;gap:6px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding-top:2px}
+.edbox{flex:none;width:260px;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:var(--r) var(--r) 0 0;padding:6px 12px 2px;margin-bottom:-2px;position:relative;z-index:1}
+.edbox .ctl-head{gap:6px}
+.edbox .ctl-head img{width:22px;height:22px}
+.edbox .ctl-head label{flex:0 1 auto;font-size:.9rem}
+.edbox output{margin-left:auto;font-family:var(--f-mono);font-weight:500}
+.edbox input[type=range]{height:22px}
+.vb.n{background:var(--muted);margin-left:2px}
+@media (max-width:700px){.tabrow{flex-wrap:wrap}.edbox{order:-1;width:100%;border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}}
+html.phone .tabrow{flex-wrap:wrap} html.phone .edbox{order:-1;width:100%;border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}
+.tabs button{display:flex;align-items:center;gap:8px;border:1px solid transparent;border-bottom:0;background:none;padding:8px 14px;border-radius:var(--r) var(--r) 0 0;
+  font:600 .95rem var(--f-display);color:var(--muted);cursor:pointer;white-space:nowrap;margin-bottom:-2px}
+.tabs button img{width:24px;height:24px}
+.tabs button b{color:var(--muted);font-weight:500}
+.tabs button[aria-selected="true"]{background:var(--panel);border-color:var(--line);color:var(--ink);border-bottom:2px solid var(--panel)}
+.tabpanel{display:grid;gap:18px}
+html.phone .tabs button{padding:8px 10px;font-size:.84rem}
+html.phone .tabs button img{width:20px;height:20px}
+
+/* City-wide strip above the tabs */
+.citygrid{display:grid;grid-template-columns:minmax(0,560px);gap:4px 28px}
+.climico{display:flex;gap:8px}
+.climico button{width:52px;height:52px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);cursor:pointer;padding:0}
+.climico button img{width:32px;height:32px;image-rendering:pixelated}
+.climico button[aria-pressed="true"]{border:2px solid var(--innov);background:var(--innov-soft)}
+.climico button:not([aria-pressed="true"]) img{opacity:.55}
+.citygrid .ctl{border-top:0;padding-block:0}
+.citygrid .hint{margin-top:2px}
+@media (max-width:700px){.citygrid{grid-template-columns:minmax(0,1fr);gap:14px}}
+html.phone .citygrid{grid-template-columns:minmax(0,1fr);gap:14px}
+
+.col{display:grid;gap:18px;min-width:0;align-content:start}
+
+/* Shared bits for the leather and paper tabs */
+.toggles{display:flex;flex-wrap:wrap;gap:10px}
+.tgl{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;cursor:pointer}
+.tgl input{width:18px;height:18px;accent-color:var(--innov);margin:0}
+.tgl .nm{font-size:.86rem;font-weight:600;line-height:1.2}
+.tgl .meta{font-size:.74rem;color:var(--muted)}
+.research.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.research.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:900px){.research.three,.research.two{grid-template-columns:minmax(0,1fr)}}
+.climate{display:flex;gap:6px;flex-wrap:wrap}
+.climate button{flex:1;border:1px solid var(--line);background:var(--panel-2);border-radius:6px;padding:6px 8px;font:inherit;font-size:.86rem;color:var(--ink);cursor:pointer}
+.climate button[aria-pressed="true"]{background:var(--innov);border-color:var(--innov);color:var(--panel)}
+.byp{margin-top:16px;display:grid;gap:8px}
+.byp .row{display:flex;align-items:center;gap:10px;background:var(--panel-2);border-radius:var(--r);padding:8px 12px;font-size:.88rem}
+.byp .row img{width:24px;height:24px;flex:none}
+.byp .row .v{font-family:var(--f-mono);font-weight:600;font-size:1.05rem;margin-left:auto;white-space:nowrap}
+.byp .row.plus .v{color:var(--good)} .byp .row.minus .v{color:var(--bad)}
+.byp .row .t{min-width:0}
+.byp .row .t small{display:block;color:var(--muted);font-size:.76rem}
+.numin{display:flex;align-items:center;gap:8px;font-size:.88rem}
+.spend.z{color:var(--muted);background:var(--panel-2)}
+.advice{display:flex;gap:12px;align-items:flex-start;border-radius:var(--r);padding:10px 12px;border:1px solid var(--line);background:var(--panel-2);max-width:760px}
+.advice.yes{border-color:color-mix(in srgb, var(--good) 45%, var(--line));background:var(--good-soft)}
+.advice .nm{font-weight:600;font-size:.9rem}
+.advice .meta{font-size:.86rem;margin-top:2px;line-height:1.45}
+.pay{display:grid;gap:8px;margin-top:14px}
+.pay:empty{display:none}
+.payrow{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-size:.88rem;color:var(--muted)}
+.payrow .lbl{color:var(--ink);font-weight:600;flex-basis:100%}
+.payrow b.spend{font-family:var(--f-mono);font-size:1.15rem;font-weight:700;padding:1px 7px;border-radius:4px}
+.payrow .arrow{font-size:1.1rem}
+.payrow .per{margin-left:auto;font-size:.8rem}
+
+/* View toggle (always visible) */
+.viewbar .ver{flex-basis:100%;text-align:center;font-size:.76rem}
+.viewbar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;font-size:.84rem;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:none;padding:6px 12px;font:inherit;color:var(--muted);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--innov);color:var(--panel)}
+
+/* ---------- Phone mode: everything below applies only with html.phone ---------- */
+.mbar,.stepper,.wstep{display:none}
+html.phone body{padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
+html.phone .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;align-items:center;gap:10px;
+  background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,.15);
+  padding:10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.mbar .mv{flex:1;min-width:0;display:grid;line-height:1.2}
+
+/* Claude's worth-it badges and their tooltip */
+.vb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font:700 11px/1 var(--f-display);color:var(--panel);cursor:help;vertical-align:middle;margin-left:6px;flex:none;user-select:none}
+.vb.g{background:var(--good)} .vb.o{background:var(--warn)} .vb.r{background:var(--bad)}
+.vtip{position:fixed;z-index:30;max-width:min(320px, calc(100vw - 24px));background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.22);padding:10px 12px;font-size:.84rem;line-height:1.5;pointer-events:none}
+.vtip b.h{display:block;font-family:var(--f-display);font-size:.92rem;margin-bottom:2px}
+.vtip .g{color:var(--good)} .vtip .o{color:var(--warn)} .vtip .r{color:var(--bad)}
+.vtip small{display:block;color:var(--muted);margin-top:4px}
+.mbar .tag{font-family:var(--f-display);font-weight:600;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}
+.mbar.yes .tag{color:var(--good)} .mbar.no .tag{color:var(--bad)}
+.mbar .big{font-family:var(--f-display);font-weight:700;font-size:1.15rem}
+.mbar .split{display:flex;gap:8px;font-family:var(--f-mono);font-size:.9rem}
+.mbar .split span{display:flex;align-items:center;gap:2px}
+.mbar .split img{width:22px;height:22px}
+.mbar a{font-size:.78rem;color:var(--innov)}
+
+html.phone input[type=range]{height:36px}
+html.phone input.tech{height:40px}
+html.phone input.tech::-webkit-slider-runnable-track{height:14px;border-radius:7px}
+html.phone input.tech::-webkit-slider-thumb{width:30px;height:30px;margin-top:-9px}
+html.phone input.tech::-moz-range-thumb{width:24px;height:24px}
+html.phone input[type=range]:not(.tech)::-webkit-slider-thumb{transform:scale(1.4)}
+html.phone .ticks .ticon{width:18px;height:18px}
+html.phone .ticks .ticon .b,html.phone .ticks .ticon .o{width:18px;height:18px}
+html.phone .ticks .ticon .f{left:2px;top:2px;width:14px;height:14px}
+html.phone .bubble{white-space:normal;width:max-content;max-width:100%}
+html.phone .ts-stage{padding-top:84px}
+.tap{display:none} html.phone .tap{display:inline} html.phone .hov{display:none}
+html.phone .stepper{display:flex;gap:8px;justify-content:space-between;margin-top:4px}
+.stepper button,.wstep button{min-width:44px;height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--ink);font:600 1.1rem var(--f-display);cursor:pointer;padding:0 12px}
+.stepper button{flex:1;font-size:.9rem;font-family:var(--f-body)}
+html.phone .wstep{display:flex;gap:8px;margin-top:4px}
+html.phone .wstep button{flex:1}
+
+html.phone .chart-box text{font-size:12px}
+html.phone .tip{max-width:min(260px, 80vw)}
+
+html.phone .cmp thead{display:none}
+html.phone .cmp,html.phone .cmp tbody{display:block;width:100%}
+html.phone .cmp-wrap{overflow:visible}
+html.phone .cmp tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
+html.phone .cmp tr.best{border-color:var(--good)}
+html.phone .cmp td{border:0;padding:0;text-align:left;display:flex;justify-content:space-between;gap:8px;white-space:nowrap}
+html.phone .cmp td:first-child{grid-column:1/-1;font-weight:600;white-space:normal;min-width:0}
+html.phone .cmp td::before{content:attr(data-label);color:var(--muted);font-family:var(--f-body);font-size:.8rem}
+html.phone .cmp td:first-child::before{content:none}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="crest"><img class="px" data-ic="lab" alt=""><img class="px" data-ic="library" alt=""><img class="px" data-ic="admin" alt=""></div>
+    <div>
+      <h1>Syx Tech Burn Calculator</h1>
+      <p>Songs of Syx: is it worth feeding clay, leather or paper to your tech rooms, or should those workers just staff the rooms? Values come from the game's own data files.</p>
+    </div>
+  </header>
+
+  <div class="tabrow">
+  <nav class="tabs" role="tablist" aria-label="Calculator">
+    <button role="tab" data-tab="clay" aria-controls="tab-clay"><img class="px" data-ic="clay" alt=""><span>Clay <b>→</b> Labs</span></button>
+    <button role="tab" data-tab="leather" aria-controls="tab-leather"><img class="px" data-ic="leather" alt=""><span>Leather <b>→</b> Libraries</span></button>
+    <button role="tab" data-tab="paper" aria-controls="tab-paper"><img class="px" data-ic="paper" alt=""><span>Paper <b>→</b> Admin</span></button>
+  </nav>
+  <div class="edbox" aria-label="Education, applies to every tab">
+    <div class="ctl-head"><img class="px" data-ic="innov_book" alt=""><label for="ed">Education</label><span class="vb n" tabindex="0" role="img" aria-label="About education" data-tip="<b class=&quot;h&quot;>Education · applies to every tab</b>Multiplies innovation, knowledge and admin. It doesn't burn more clay, leather or paper. Increasing it tends to make burning resources a better proposition.<small>×1.00 uneducated, ×2.00 fully educated.</small>">i</span><output id="ed-o" class="num"></output></div>
+    <input type="range" id="ed" min="1" max="2" step="0.05" value="1" aria-label="Education">
+  </div>
+  </div>
+
+  <div class="tabpanel" id="tab-clay" role="tabpanel">
+  <section class="panel" aria-label="Research">
+    <h2>Research</h2>
+    <div class="research">
+      <div class="ts">
+        <div class="ts-title"><h3>Laboratory tech</h3><span class="muted">Science tree, paid in knowledge</span></div>
+        <div class="ts-stage" id="ts-lab"></div>
+      </div>
+      <div class="ts">
+        <div class="ts-title"><h3>Claypit tech</h3>
+          <span class="info"><button type="button" id="clay-info-b" aria-expanded="false" aria-controls="clay-info" aria-label="What is the kept clay tech level?">i</button>
+            <span class="pop" id="clay-info" role="tooltip" hidden>
+              <p><b>Clay tech you'd keep anyway.</b> At 0, the calculator assumes clay tech is only there to feed your labs. If the answer is "Skip clay", you'd refund all of it.</p>
+              <p>If you'll keep some clay tech whatever happens, for example for pottery, bricks or trade, set that level here. Its cost then counts as already paid. That can only help clay, and it can make clay worth burning when it otherwise wouldn't be.</p>
+              <p class="muted">Only set a level you'd really keep without the labs. Otherwise clay looks better than it is.</p>
+            </span>
+          </span>
+          <span class="muted">Mines tree, paid in innovation. Set the level you'd keep anyway.</span></div>
+        <div class="ts-stage" id="ts-clay"></div>
+        <div class="key">
+          <span><i style="background:var(--innov)"></i>Kept anyway (already paid)</span>
+          <span><i style="background:var(--good)"></i>Worth researching for clay</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <aside class="panel" aria-label="Settings">
+      <h2>Your city</h2>
+
+      <div class="ctl primary">
+        <div class="ctl-head"><img class="px" data-ic="lab" alt=""><label for="w">Workforce to assign</label><output id="w-o" class="num"></output></div>
+        <input type="range" id="w" min="0" max="1000" step="1" value="500">
+        <div class="ends"><span>10</span><span>400</span><span>2,000</span></div>
+        <div class="wstep"><button type="button" data-d="-1" aria-label="Fewer workers">−</button><button type="button" data-d="1" aria-label="More workers">+</button></div>
+      </div>
+
+
+      <div class="ctl">
+        <div class="ctl-head"><img class="px" data-ic="lab" alt=""><label for="rl">Lab race bonus</label><output id="rl-o" class="num"></output></div>
+        <input type="range" id="rl" min="0.8" max="1.25" step="0.01" value="1">
+        <div class="ends"><span>×0.80 Garthimi</span><span>Human ×1.25</span></div>
+      </div>
+
+      <div class="ctl">
+        <div class="ctl-head"><img class="px" data-ic="mine" alt=""><label for="rm">Claypit race bonus</label><output id="rm-o" class="num"></output></div>
+        <input type="range" id="rm" min="0.75" max="1.25" step="0.01" value="1">
+        <div class="ends"><span>×0.75 Tilapi</span><span>Garthimi ×1.25</span></div>
+      </div>
+
+      <div class="ctl">
+        <div class="ctl-head"><img class="px" data-ic="clay" alt=""><label for="dq">Clay deposit quality</label><output id="dq-o" class="num"></output></div>
+        <input type="range" id="dq" min="90" max="110" step="1" value="100">
+        <div class="ends"><span>90%</span><span>110%</span></div>
+      </div>
+
+      <div class="ctl">
+        <div class="ctl-head"><img class="px" data-ic="cart" alt=""><label for="lo">Logistics overhead</label><output id="lo-o" class="num"></output></div>
+        <input type="range" id="lo" min="0" max="50" step="1" value="10">
+        <div class="ends"><span>0%</span><span>50% extra haulers per miner</span></div>
+      </div>
+
+      <div class="noble" id="nb-lab"></div>
+      <div class="noble" id="nb-mine"></div>
+    </aside>
+
+    <div class="col">
+    <main class="panel" aria-live="polite">
+      <div id="verdict" class="verdict"></div>
+
+      <div class="alloc">
+        <div class="alloc-bar" id="alloc-bar" role="img" aria-label="Workforce split"></div>
+        <div class="alloc-legend" id="alloc-legend"></div>
+      </div>
+
+      <div class="tiles" id="tiles"></div>
+
+      <div class="cmp-wrap"><table class="cmp" id="cmp"></table></div>
+    </main>
+
+    <section class="panel" aria-label="What more research would buy">
+      <h2><img class="px" data-ic="innov_book" alt="">What more research would buy</h2>
+      <p class="hint">Extra innovation from more lab tech, at your current settings, with workers and clay re-split for the new tech. The knowledge cost stays tied up for as long as you keep the tech.</p>
+      <div class="cmp-wrap"><table class="cmp" id="clay-more"></table></div>
+
+      <h2 style="margin-top:22px"><img class="px" data-ic="innov_book" alt="">Gain over all labs, by clay tech researched</h2>
+      <p class="hint">Each bar is the best split of your workforce at that clay tech level, after paying for clay tech above the level you keep anyway. Bars above the dashed line beat putting everyone in labs. <span class="hov">Hover over</span><span class="tap">Tap</span> a bar for details.</p>
+      <div class="chart-box" id="chart"></div>
+    </section>
+    </div>
+  </div>
+
+  <section class="panel">
+    <details class="notes">
+      <summary>How the numbers are worked out</summary>
+      <ul>
+        <li><b>Innovation is a standing total</b>: the labs hold it at a level set by their workers, and tech costs are held out of it (or out of knowledge) for as long as you keep the tech.</li>
+        <li><b>Clay tech kept anyway</b>: clay tech you'd keep for other reasons (pottery, bricks, trade) counts as already paid. At 0, all clay tech is charged to the labs. Clay tech costs and gains are both innovation, so the calculator picks the best level exactly.</li>
+        <li><b>Lab output per worker</b> = (1 + upgrade [+50% / +100%] + tools [+25% per level] + Laboratory efficiency [+40% per level] + experience + noble) × race. Clay in stock doubles the whole room (×2).</li>
+        <li><b>Education</b> (×1 to ×2) multiplies the city's total innovation, not the lab room itself, so it adds innovation without burning more clay. Clay tech costs stay the same, so a more educated city gets more for each point spent.</li>
+        <li><b>Lab tech slider order</b>: the lab tree branches, so the slider uses the best-value order per knowledge spent: Improved Laboratory, Laboratory Tools 1, Advanced Laboratory, Laboratory Efficiency 1–5, then Laboratory Tools 2. Tools 2 gives the least per point, so it comes last. The one state the slider can't show is Tools 2 taken before Advanced Laboratory. The clay tree is a straight chain in the game.</li>
+        <li><b>Clay burned</b> = 0.75 per lab worker per day × that worker's full output, including the ×2. Better labs burn more clay.</li>
+        <li><b>Claypit output</b> = 1.5 clay per miner per day × deposit (0.9 to 1.1) × (1 + clay techs + upgrade [+100% / +200%] + tools [+25% per level] + experience + noble) × race.</li>
+        <li><b>Experience</b>: labs gain up to +250% as lab workers rise from 50 to 2,000. Claypits gain up to +100% from 50 to 1,000. Worked out from the split shown.</li>
+        <li><b>Noble office</b> ("Master of …"): +250%. With the tick alone it covers every worker. Add a count and rank to apply the game's cap of 50 × (1 + 2 × rank) workers per noble.</li>
+        <li><b>Tools</b> are assumed fully stocked once researched. <b>Haulers</b> = miners × logistics overhead, rounded up. If clay runs short, only that share of the labs gets the ×2.</li>
+        <li><b>ⓘ verdicts</b> on lab tech convert its knowledge cost at about 1 admin ≈ 1.4 knowledge ≈ 1.9 innovation: what each point costs in workers once the rooms are well researched. Green is 1.25× or better, orange 0.8–1.25×, red below 0.8×.</li>
+        <li><b>Not modelled</b>: room degradation, workload and distance penalties, tool wear and maintenance, the furniture and resource costs of building upgrades, and flat bonuses such as city rank (they add the same with or without clay, so they don't change the answer, but the percentages leave them out).</li>
+      </ul>
+    </details>
+  </section>
+  </div>
+
+  <div class="tabpanel" id="tab-leather" role="tabpanel" hidden></div>
+  <div class="tabpanel" id="tab-paper" role="tabpanel" hidden></div>
+
+  <div class="viewbar">
+    <span>View</span>
+    <span class="seg" role="group" aria-label="Page layout">
+      <button type="button" data-view="auto">Auto</button>
+      <button type="button" data-view="desktop">Desktop</button>
+      <button type="button" data-view="phone">Phone</button>
+    </span>
+    <span id="view-note"></span>
+    <span class="ver">v1.0 · built from Songs of Syx 0.71.90 game files</span>
+    <span class="ver">Unofficial fan tool. Game data and icons © the Songs of Syx developer.</span>
+  </div>
+</div>
+
+<div class="mbar" id="mbar" aria-live="polite"></div>
+
+<script>
+const IC = __ICONS__;
+document.querySelectorAll('img[data-ic]').forEach(i=>{ i.src = IC[i.dataset.ic] || IC.vial; });
+
+/* ---------- game data ---------- */
+const CLAY_TECHS = [
+  {id:'CLAY01', name:'Basic Extracting Clay',          lv:7, cost:4,  kind:'add',  v:0.15, ov:'tech0',  eff:'+15% output'},
+  {id:'CLAYt1', name:'Extracting Clay Tools',          lv:2, cost:6,  kind:'tool', v:0.25, ov:'tools',  eff:'+1 tool slot (+25%)'},
+  {id:'CLAY02', name:'Skilled Extracting Clay',        lv:4, cost:9,  kind:'add',  v:0.15, ov:'tech1',  eff:'+15% output'},
+  {id:'CLAYu1', name:'Improved Clay Mine',             lv:1, cost:58, kind:'up',   v:1.0,  ov:'up1',    eff:'Upgrade I (+100%)'},
+  {id:'CLAY03', name:'Proficient Extracting Clay',     lv:7, cost:15, kind:'add',  v:0.15, ov:'tech2',  eff:'+15% output'},
+  {id:'CLAYt2', name:'Advanced Extracting Clay Tools', lv:2, cost:22, kind:'tool', v:0.25, ov:'tools2', eff:'+1 tool slot (+25%)'},
+  {id:'CLAY04', name:'Expert Extracting Clay',         lv:6, cost:21, kind:'add',  v:0.2,  ov:'tech3',  eff:'+20% output'},
+  {id:'CLAYu2', name:'Advanced Clay Mine',             lv:1, cost:84, kind:'up',   v:1.0,  ov:'up2',    eff:'Upgrade II (+200% total)'},
+];
+const STEPS = []; // one per research level along the path
+CLAY_TECHS.forEach((t,ti)=>{ for(let j=1;j<=t.lv;j++) STEPS.push({ti,j,cost:t.cost,v:t.v}); });
+const KMAX = STEPS.length;
+const ADD_CUM=[0], COST_CUM=[0];
+STEPS.forEach((s,i)=>{ ADD_CUM.push(ADD_CUM[i]+s.v); COST_CUM.push(COST_CUM[i]+s.cost); });
+const TECH_OFFSET = []; { let o=0; CLAY_TECHS.forEach(t=>{ TECH_OFFSET.push(o); o+=t.lv; }); }
+
+// Lab tree branches (Tools and Advanced Laboratory both need Improved Laboratory).
+// The slider follows the best-value order per knowledge spent:
+// Upgrade I, Tools 1, Upgrade II, Efficiency 1-5, then Tools 2 (worst value, so last).
+const LAB_TECHS = [
+  {id:'LAB00', name:'Improved Laboratory',   lv:1, ov:'up1',   eff:'Upgrade I (+50%)',         cost:[50]},
+  {id:'LABTT', name:'Laboratory Tools',      lv:1, ov:'tools', eff:'+1 tool slot (+25%)',      cost:[20], first:1, of:2},
+  {id:'LAB01', name:'Advanced Laboratory',   lv:1, ov:'up2',   eff:'Upgrade II (+100% total)', cost:[100]},
+  {id:'LAB02', name:'Laboratory Efficiency', lv:5, ov:'tech0', eff:'+40% output',              cost:[12,24,36,48,60]},
+  {id:'LABTT', name:'Laboratory Tools',      lv:1, ov:'tools', eff:'+1 tool slot (+25%)',      cost:[40], first:2, of:2},
+];
+const LAB_STEPS=[]; LAB_TECHS.forEach((t,ti)=>{ for(let j=1;j<=t.lv;j++) LAB_STEPS.push({ti,j,cost:t.cost[j-1]}); });
+const LAB_OFFSET=[]; { let o=0; LAB_TECHS.forEach(t=>{ LAB_OFFSET.push(o); o+=t.lv; }); }
+
+/* ---------- state ---------- */
+const S = {
+  W:200, ed:1, rl:1, rm:1, dq:1, lo:0.10,
+  labK:5,
+  k0:0,
+  nL:{on:false, gran:false, count:1, rank:0},
+  nM:{on:false, gran:false, count:1, rank:0},
+};
+try{ const saved = JSON.parse(localStorage.getItem('claypit-calc-v2')||'null'); if(saved) Object.assign(S, saved); }catch(e){}
+const save = ()=>{ try{ localStorage.setItem('claypit-calc-v2', JSON.stringify(S)); }catch(e){} };
+
+/* ---------- model ---------- */
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function nobleAdd(n, workers){
+  if(!n.on) return 0;
+  if(!n.gran) return 2.5;
+  const cap = 50*n.count*(1+2*n.rank);
+  return 2.5*Math.min(1, cap/Math.max(workers,1));
+}
+function labBase(){
+  const k=S.labK;
+  const up = k>=3 ? 1.0 : (k>=1 ? 0.5 : 0);
+  const tools = (k>=2 ? 1 : 0) + (k>=9 ? 1 : 0);
+  return 1 + up + 0.25*tools + 0.4*clamp(k-3,0,5);
+}
+function labSkill(l){ // innovation per lab worker without clay
+  return (labBase() + 2.5*clamp((l-50)/1950,0,1) + nobleAdd(S.nL,l)) * S.rl;
+}
+function mineRate(k,m){ // clay per miner per day
+  return 1.5 * S.dq * (1 + ADD_CUM[k] + 1.0*clamp((m-50)/950,0,1) + nobleAdd(S.nM,m)) * S.rm;
+}
+function evaluate(k,m){
+  const h = m>0 ? Math.ceil(m*S.lo - 1e-9) : 0;
+  const l = S.W - m - h;
+  if(l<=0) return null;
+  const s = labSkill(l);
+  const supply = m>0 ? m*mineRate(k,m) : 0;
+  const demand = l*0.75*2*s;
+  const f = demand>0 ? Math.min(1, supply/demand) : 0;
+  // Education multiplies the city's innovation total, not the lab room, so clay burn is unchanged.
+  return {k,m,h,l,s,supply,demand,f,innov:S.ed*l*s*(1+f)};
+}
+function bestAt(k){
+  let best=null;
+  for(let m=0;m<=S.W;m++){
+    const r=evaluate(k,m); if(!r) break;
+    if(!best || r.innov>best.innov+1e-9) best=r;
+  }
+  best.cost = COST_CUM[k]-COST_CUM[S.k0];
+  best.net = best.innov - best.cost;
+  return best;
+}
+function solve(){
+  const none = evaluate(S.k0,0);
+  const rows=[]; for(let k=S.k0;k<=KMAX;k++) rows.push(bestAt(k));
+  let best=rows[0]; rows.forEach(r=>{ if(r.net>best.net+1e-9) best=r; });
+  return {none, here:rows[0], best, rows};
+}
+
+/* ---------- formatting ---------- */
+const fmt=(x,d=0)=>x.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=x=>(x>=0?'+':'')+fmt(x*100,1)+'%';
+function stepName(k){
+  if(k===0) return 'no clay tech';
+  const s=STEPS[k-1], t=CLAY_TECHS[s.ti];
+  return t.lv>1 ? `${t.name} ${s.j}/${t.lv}` : t.name;
+}
+function ticon(fg, ov, bg){
+  return `<span class="ticon">${bg?`<img class="b" src="${IC[bg]}" alt="">`:''}<img class="${bg?'f':'b'}" src="${IC[fg]}" alt=""><img class="o" src="${IC[ov]}" alt=""></span>`;
+}
+
+/* ---------- render ---------- */
+function renderControls(){
+  const bind=(id,key,scale,show)=>{
+    const el=document.getElementById(id), o=document.getElementById(id+'-o');
+    el.value = S[key]*scale;
+    o.textContent = show(S[key]);
+    el.oninput=()=>{ S[key]=+el.value/scale; o.textContent=show(S[key]); update(); };
+  };
+  { // workforce: power curve so the middle of the track is 400 (10 at the left, 2,000 at the right)
+    const el=document.getElementById('w'), o=document.getElementById('w-o');
+    const A=Math.log((400-10)/1990)/Math.log(0.5);
+    const toW=p=>{ const w=10+1990*Math.pow(p/1000,A); return clamp(Math.round(w/(w<100?1:w<1000?5:10))*(w<100?1:w<1000?5:10),10,2000); };
+    const toP=w=>Math.round(1000*Math.pow((w-10)/1990,1/A));
+    el.value=toP(S.W); o.textContent=fmt(S.W);
+    el.oninput=()=>{ S.W=toW(+el.value); o.textContent=fmt(S.W); update(); };
+    document.querySelectorAll('.wstep button').forEach(b=>b.onclick=()=>{
+      const d=+b.dataset.d, W=S.W, step = (d>0 ? W>=1000 : W>1000) ? 50 : (d>0 ? W>=100 : W>100) ? 10 : 5;
+      S.W=clamp(W+d*step,10,2000); el.value=toP(S.W); o.textContent=fmt(S.W); update();
+    });
+  }
+  bind('ed','ed',1,v=>'×'+v.toFixed(2));
+  bind('rl','rl',1,v=>'×'+v.toFixed(2));
+  bind('rm','rm',1,v=>'×'+v.toFixed(2));
+  bind('dq','dq',100,v=>Math.round(v*100)+'%');
+  bind('lo','lo',100,v=>Math.round(v*100)+'%');
+  renderNoble('nb-lab','nL','lab','Master of Laboratories','lab workers');
+  renderNoble('nb-mine','nM','mine','Master of Claypits','miners');
+}
+function renderNoble(id,key,ic,title,who){
+  const n=S[key], box=document.getElementById(id);
+  box.innerHTML = `
+    <div class="row">
+      <img class="px" src="${IC.noble}" alt="">
+      <label class="tick"><input type="checkbox" id="${id}-on" ${n.on?'checked':''}> ${title} <span class="muted">+250%</span></label>
+      <img class="px" src="${IC[ic]}" alt="" title="${title}">
+    </div>
+    ${n.on ? (n.gran ? `
+      <div class="gran">
+        <label for="${id}-c">Nobles</label><input type="number" id="${id}-c" min="1" max="20" value="${n.count}">
+        <label for="${id}-r">Rank</label><input type="number" id="${id}-r" min="0" max="10" value="${n.rank}">
+        <span>covers <b class="num">${fmt(50*n.count*(1+2*n.rank))}</b> ${who}</span>
+        <button class="linkbtn" id="${id}-g">Cover everyone</button>
+      </div>` : `
+      <div class="gran"><span>Covers all ${who}.</span><button class="linkbtn" id="${id}-g">Set nobles and rank</button></div>`) : ''}`;
+  box.querySelector(`#${id}-on`).onchange=e=>{ n.on=e.target.checked; renderNoble(id,key,ic,title,who); update(); };
+  const g=box.querySelector(`#${id}-g`); if(g) g.onclick=()=>{ n.gran=!n.gran; renderNoble(id,key,ic,title,who); update(); };
+  const c=box.querySelector(`#${id}-c`), r=box.querySelector(`#${id}-r`);
+  if(c) c.oninput=()=>{ n.count=clamp(Math.round(+c.value||1),1,20); box.querySelector('.gran b').textContent=fmt(50*n.count*(1+2*n.rank)); update(); };
+  if(r) r.oninput=()=>{ n.rank=clamp(Math.round(+r.value||0),0,10); box.querySelector('.gran b').textContent=fmt(50*n.count*(1+2*n.rank)); update(); };
+}
+
+/* A snapping slider over a linear tech path, with a bubble naming the tech under the thumb. */
+function makeTechSlider(cfg){
+  const stage=document.getElementById(cfg.id);
+  const N=cfg.steps.length;
+  stage.innerHTML = `<div class="bubble"></div>
+    <input type="range" class="tech" id="${cfg.id}-r" min="0" max="${N}" step="1" aria-label="${cfg.label}">
+    <div class="ticks">${cfg.techs.map((t,ti)=>`<span style="left:${(cfg.offset[ti]+1)/N*100}%" title="${t.name}">${ticon(cfg.fg, t.ov, cfg.bg)}</span>`).join('')}</div>
+    <div class="stepper"><button type="button" data-d="-1">− Previous level</button><button type="button" data-d="1">Next level +</button></div>
+    <div class="ts-foot"></div>`;
+  const changed = ()=> (cfg.onChange || update)();
+  stage.querySelectorAll('.stepper button').forEach(b=>b.onclick=()=>{
+    const k=clamp(+input.value + +b.dataset.d, 0, N); cfg.set(k); changed();
+  });
+  const input=stage.querySelector('input'), bubble=stage.querySelector('.bubble'), foot=stage.querySelector('.ts-foot');
+  const pos=k=>`calc(10px + (100% - 20px) * ${k/N})`;
+  function draw(k, opt){
+    input.value=k;
+    const a=pos(k), b=pos(Math.max(k,opt??k));
+    input.style.setProperty('--fill', `linear-gradient(to right, var(--innov) 0 ${a}, var(--good) ${a} ${b}, var(--panel-2) ${b} 100%)`);
+    bubble.innerHTML = cfg.bubble(k, opt);
+    // place bubble over the thumb, kept inside the stage
+    const W=stage.clientWidth, x=10+(W-20)*k/N, bw=bubble.offsetWidth;
+    const left=clamp(x, bw/2, W-bw/2);
+    bubble.style.left=left+'px';
+    bubble.style.setProperty('--arrow', (x-left+bw/2)+'px');
+    foot.innerHTML = cfg.foot(k, opt);
+  }
+  input.addEventListener('input',()=>{ cfg.set(+input.value); changed(); });
+  return {draw};
+}
+
+function techAt(steps, techs, k){
+  if(k===0) return null;
+  const s=steps[k-1], t=techs[s.ti];
+  const label = t.of ? `${t.name} ${t.first+s.j-1}/${t.of}` : (t.lv>1 ? `${t.name} ${s.j}/${t.lv}` : t.name);
+  return {t, j:s.j, label};
+}
+
+const labSlider = makeTechSlider({
+  id:'ts-lab', label:'Laboratory tech level', steps:LAB_STEPS, techs:LAB_TECHS, offset:LAB_OFFSET, fg:'lab',
+  set:k=>S.labK=k,
+  bubble:k=>{
+    const a=techAt(LAB_STEPS,LAB_TECHS,k);
+    if(!a) return `${ticon('lab','tech0')}<div><div class="nm">No lab tech</div><div class="meta">Basic laboratory</div></div>`;
+    return `${ticon('lab',a.t.ov)}<div><div class="nm">${a.label}</div><div class="meta">${a.t.eff}</div></div>`;
+  },
+  foot:k=>{
+    const spent=LAB_STEPS.slice(0,k).reduce((s,x)=>s+x.cost,0);
+    let earn='';
+    if(k>0){
+      const b = typeof badge==='function' ? badge({k:spent}, LAB_EARN, 'innovation', true) : '';
+      earn = LAB_EARN>0.05 ? `<span>In exchange <b class="spend g">+${fmt(LAB_EARN,1)}</b> innovation${b}</span>`
+                           : `<span><b class="spend z">Not contributing</b> to innovation${b}</span>`;
+    }
+    return `<span>Lab bonus from tech <b>+${fmt((labBase()-1)*100)}%</b></span><span>Knowledge spent <b class="spend k">${fmt(spent)}</b></span>${earn}`;
+  },
+});
+
+const claySlider = makeTechSlider({
+  id:'ts-clay', label:'Claypit tech level kept anyway', steps:STEPS, techs:CLAY_TECHS, offset:TECH_OFFSET, fg:'clay', bg:'bgmine',
+  set:k=>S.k0=k,
+  bubble:(k,opt)=>{
+    const a=techAt(STEPS,CLAY_TECHS,k);
+    const head = a ? `${ticon('clay',a.t.ov,'bgmine')}<div><div class="nm">${a.label}</div><div class="meta">${a.t.eff}</div>`
+                   : `${ticon('clay','tech0','bgmine')}<div><div class="nm">No clay tech</div><div class="meta">Basic claypit</div>`;
+    const o = opt>k ? `<div class="opt">Best: research to ${stepName(opt)}</div>` : '';
+    return head+o+'</div>';
+  },
+  foot:(k,opt)=>{
+    const extra = opt>k ? `<span>Extra worth buying <b class="spend g">${fmt(COST_CUM[opt]-COST_CUM[k])}</b> innovation</span>` : '';
+    return `<span>Claypit bonus from tech <b>+${fmt(ADD_CUM[k]*100)}%</b></span><span>Already paid <b class="spend i">${fmt(COST_CUM[k])}</b> innovation</span>${extra}`;
+  },
+});
+
+function renderVerdict(R){
+  const v=document.getElementById('verdict');
+  const gain=R.best.net-R.none.innov, gainRel=gain/R.none.innov;
+  const useClay = R.best.m>0 && gain>0.05;
+  const extra = R.best.k>S.k0;
+  v.className='verdict '+(useClay?'yes':'no');
+  if(useClay){
+    v.innerHTML = `<span class="tag">Burn clay</span>
+      <h3><span class="num">+${fmt(gain)}</span> innovation <span class="muted" style="font-size:1rem">(${pct(gainRel)} over all labs)</span></h3>
+      <p>Put <b>${fmt(R.best.m)}</b> on claypits${R.best.h?` and <b>${fmt(R.best.h)}</b> on hauling`:''}, and <b>${fmt(R.best.l)}</b> in labs. ${
+        extra ? `Research clay tech up to <b>${stepName(R.best.k)}</b> for <b class="num">${fmt(R.best.cost)}</b> innovation. It pays for itself.`
+              : `No more clay tech is needed beyond the level you keep anyway.`}</p>`;
+  } else {
+    v.innerHTML = `<span class="tag">Skip clay</span>
+      <h3>Put all <span class="num">${fmt(S.W)}</span> workers in labs</h3>
+      <p>No clay tech level and no split of miners beats running the labs without clay. All labs gives <b class="num">${fmt(R.none.innov)}</b> innovation.</p>`;
+  }
+  // allocation bar
+  const b=R.best, use=useClay?b:R.none;
+  document.getElementById('alloc-bar').innerHTML =
+    `<div class="seg-lab" style="flex-grow:${use.l}" title="Lab workers"></div>`+
+    (use.m?`<div class="seg-mine" style="flex-grow:${use.m}" title="Claypit miners"></div>`:'')+
+    (use.h?`<div class="seg-haul" style="flex-grow:${use.h}" title="Haulers"></div>`:'');
+  document.getElementById('alloc-legend').innerHTML =
+    `<span><span class="sw seg-lab"></span><img class="px" src="${IC.lab}" alt="">Labs <b>${fmt(use.l)}</b></span>`+
+    `<span><span class="sw seg-mine"></span><img class="px" src="${IC.mine}" alt="">Claypits <b>${fmt(use.m)}</b></span>`+
+    `<span><span class="sw seg-haul"></span><img class="px" src="${IC.cart}" alt="">Haulers <b>${fmt(use.h)}</b></span>`;
+  // pinned bar (phone mode only, hidden by CSS otherwise)
+  if(ACTIVE==='clay') setMbar(useClay, 'clay', useClay?'+'+fmt(gain)+' innovation':fmt(R.none.innov)+' innovation',
+    [['lab',use.l],['mine',use.m],['cart',use.h]]);
+  return useClay;
+}
+
+function renderTiles(R,useClay){
+  const b=useClay?R.best:R.here;
+  const feeds = b.m>0 ? mineRate(b.k,b.m)/(1.5*b.s) : mineRate(b.k,1)/(1.5*labSkill(S.W));
+  const t=[
+    ['Lab worker, no clay', fmt(S.ed*labSkill(useClay?b.l:S.W),2), S.ed>1?`innovation each, incl. ×${S.ed.toFixed(2)} education`:'innovation each'],
+    ['Lab worker, with clay', fmt(2*S.ed*labSkill(useClay?b.l:S.W),2), `burns ${fmt(1.5*labSkill(useClay?b.l:S.W),2)} clay/day`],
+    ['Claypit miner', fmt(mineRate(b.k, Math.max(b.m,1)),2), 'clay per day'],
+    ['1 miner feeds', fmt(feeds,2), 'lab workers with clay'],
+  ];
+  document.getElementById('tiles').innerHTML = t.map(([k,v,s])=>`<div class="tile"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join('');
+}
+
+function renderCompare(R){
+  const rows=[
+    ['All labs, no clay', R.none, 0],
+    ['Clay at the tech you keep anyway', R.here, R.here.cost],
+  ];
+  if(R.best.k!==R.here.k) rows.push([`Clay with research up to ${stepName(R.best.k)}`, R.best, R.best.cost]);
+  const bestNet=Math.max(...rows.map(r=>r[1].innov-r[2]));
+  document.getElementById('cmp').innerHTML =
+    `<thead><tr><th>Option</th><th>Labs</th><th>Miners</th><th>Haulers</th><th>Innovation</th><th>Tech cost</th><th>Net</th><th>vs all labs</th></tr></thead><tbody>`+
+    rows.map(([n,r,c])=>{ const net=r.innov-c; return `<tr class="${Math.abs(net-bestNet)<1e-6?'best':''}"><td>${n}</td><td data-label="Labs">${fmt(r.l)}</td><td data-label="Miners">${fmt(r.m)}</td><td data-label="Haulers">${fmt(r.h)}</td><td data-label="Innovation">${fmt(r.innov)}</td><td data-label="Tech cost">${c?fmt(c):'–'}</td><td data-label="Net">${fmt(net)}</td><td data-label="vs all labs">${r===R.none?'–':pct(net/R.none.innov-1)}</td></tr>`; }).join('')+
+    `</tbody>`;
+}
+
+function renderChart(R){
+  const box=document.getElementById('chart');
+  const phone=isPhone();
+  const Wd=phone?360:680, Ht=phone?280:240, pl=phone?50:46, pr=phone?8:12, pt=14, pb=40;
+  const rows=R.rows, n=rows.length, base=R.none.innov;
+  const gains=rows.map(r=>r.net-base);
+  const hi=Math.max(0,...gains), lo=Math.min(0,...gains);
+  const span=Math.max(hi-lo, base*0.01, 1);
+  const niceStep=(()=>{ const raw=span/4, p=Math.pow(10,Math.floor(Math.log10(raw))); const m=raw/p; return (m<1.5?1:m<3?2:m<7?5:10)*p; })();
+  const yMax=Math.ceil(hi*1.1/niceStep)*niceStep || niceStep, yMin=Math.floor(lo*1.05/niceStep)*niceStep;
+  const y=v=>pt+(Ht-pt-pb)*(yMax-v)/(yMax-yMin);
+  const bw=(Wd-pl-pr)/n, gap=Math.min(2, bw*0.15);
+  let svg=`<svg viewBox="0 0 ${Wd} ${Ht}" role="img" aria-label="Innovation gained or lost against all labs, by clay tech level">`;
+  for(let v=yMin; v<=yMax+1e-9; v+=niceStep){
+    svg+=`<line x1="${pl}" x2="${Wd-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end">${v>0?'+':''}${fmt(v)}</text>`;
+  }
+  rows.forEach((r,i)=>{
+    const g=gains[i], x=pl+i*bw+gap/2, w=Math.max(1,bw-gap), y0=y(0), y1=y(g);
+    const isBest=r===R.best && g>0.05;
+    const fill = isBest ? 'var(--good)' : (g>0 ? 'var(--bar)' : 'var(--bar-base)');
+    const rad=Math.min(3,w/2, Math.abs(y1-y0));
+    if(Math.abs(y1-y0)>0.5){
+      svg+= g>=0
+        ? `<path d="M${x},${y0} V${y1+rad} Q${x},${y1} ${x+rad},${y1} H${x+w-rad} Q${x+w},${y1} ${x+w},${y1+rad} V${y0} Z" fill="${fill}"/>`
+        : `<path d="M${x},${y0} V${y1-rad} Q${x},${y1} ${x+rad},${y1} H${x+w-rad} Q${x+w},${y1} ${x+w},${y1-rad} V${y0} Z" fill="${fill}"/>`;
+    }
+    svg+=`<rect x="${pl+i*bw}" y="${pt}" width="${bw}" height="${Ht-pt-pb}" fill="transparent" data-i="${i}" class="hit"/>`;
+  });
+  CLAY_TECHS.forEach((t,ti)=>{
+    const k=TECH_OFFSET[ti]+1; if(k<=S.k0) return;
+    const x=pl+(k-S.k0)*bw;
+    svg+=`<line x1="${x}" x2="${x}" y1="${Ht-pb}" y2="${Ht-pb+6}" stroke="var(--muted)"/>`;
+  });
+  svg+=`<line x1="${pl}" x2="${Wd-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--clay)" stroke-width="2" stroke-dasharray="6 4"/>`;
+  svg+=`<text x="${pl+6}" y="${y(0)-6}" class="lbl">All labs, no clay (${fmt(base)})</text>`;
+  if(R.best.m>0 && gains[rows.indexOf(R.best)]>0.05){
+    const bi=rows.indexOf(R.best), bx=pl+bi*bw+bw/2;
+    svg+=`<text x="${clamp(bx,pl+30,Wd-pr-30)}" y="${y(gains[bi])-6}" text-anchor="middle" class="lbl">+${fmt(gains[bi])}</text>`;
+  }
+  svg+=`<text x="${pl}" y="${Ht-10}">${S.k0===0?'No clay tech':(phone?'Kept level':'Your kept level')}</text><text x="${Wd-pr}" y="${Ht-10}" text-anchor="end">${phone?'Full tree →':'Advanced Clay Mine →'}</text>`;
+  svg+=`</svg><div class="tip" hidden></div>`;
+  box.innerHTML=svg;
+  const tip=box.querySelector('.tip');
+  const fill=r=>{ tip.innerHTML=`<b>${stepName(r.k)}</b><br>Net <span class="num">${fmt(r.net)}</span> (${pct(r.net/R.none.innov-1)} vs all labs)<br>Miners ${fmt(r.m)} · haulers ${fmt(r.h)} · labs ${fmt(r.l)}<br>Extra tech cost <span class="num">${fmt(r.cost)}</span> · clay supplied ${fmt(r.f*100,0)}%`; };
+  box.querySelectorAll('.hit').forEach(h=>{
+    // tap (touch) shows the details under the chart's top edge, centred on the bar
+    h.addEventListener('click',e=>{
+      fill(rows[+h.dataset.i]); tip.hidden=false;
+      const bb=box.getBoundingClientRect(), hb=h.getBoundingClientRect(), tw=tip.offsetWidth;
+      tip.style.left=clamp(hb.left-bb.left+hb.width/2-tw/2, 0, bb.width-tw)+'px'; tip.style.top='4px';
+      e.stopPropagation();
+    });
+    h.addEventListener('mouseenter',e=>{
+      if(e.pointerType==='touch' || matchMedia('(hover: none)').matches) return;
+      fill(rows[+h.dataset.i]); tip.hidden=false;
+    });
+    h.addEventListener('mousemove',e=>{
+      if(matchMedia('(hover: none)').matches) return;
+      const bb=box.getBoundingClientRect(); let x=e.clientX-bb.left+12; if(x>bb.width-260) x=e.clientX-bb.left-262;
+      tip.style.left=Math.max(0,x)+'px'; tip.style.top=(e.clientY-bb.top-10)+'px';
+    });
+    h.addEventListener('mouseleave',()=>{ if(!matchMedia('(hover: none)').matches) tip.hidden=true; });
+  });
+}
+
+/* "What more research would buy" for the Clay tab: more lab tech (knowledge -> innovation) */
+function renderClayMore(R){
+  const tbl=document.getElementById('clay-more'), k=S.labK, N=LAB_STEPS.length, rows=[];
+  const at = t => { S.labK=t; const r=solve(); S.labK=k; return r.best.net; };
+  const add = (name, t) => {
+    const cost = LAB_STEPS.slice(k,t).reduce((a,x)=>a+x.cost,0), g = at(t) - R.best.net;
+    const b = typeof badge==='function' ? badge({k:cost}, g, 'innovation', true) : '';
+    rows.push(`<tr><td>${name}</td><td data-label="Cost">${fmt(cost)} knowledge${b}</td><td data-label="Innovation gained">${g>=0.05?'+':''}${fmt(g,1)}</td><td data-label="Per 100 spent">${g>0.05?fmt(100*g/cost,1):'–'}</td></tr>`);
+  };
+  if(k<N){
+    const a=techAt(LAB_STEPS,LAB_TECHS,k+1);
+    add(`Next level: ${a.label}`, k+1);
+    if(N>k+1) add('Lab tree to the end', N);
+  }
+  tbl.innerHTML = `<thead><tr><th>Research</th><th>Cost</th><th>Innovation gained</th><th>Per 100 spent</th></tr></thead><tbody>` +
+    (rows.length ? rows.join('') : `<tr><td>All lab tech is researched</td><td data-label="Cost">–</td><td data-label="Innovation gained">–</td><td data-label="Per 100 spent">–</td></tr>`) + `</tbody>`;
+}
+
+let LAB_EARN = 0;  // innovation the lab tech adds: best result now minus best result with no lab tech
+function update(){
+  const R=solve();
+  if(S.labK>0){ const k=S.labK; S.labK=0; const R0=solve(); S.labK=k; LAB_EARN=R.best.net-R0.best.net; } else LAB_EARN=0;
+  const useClay=renderVerdict(R);
+  renderTiles(R,useClay);
+  renderCompare(R);
+  renderChart(R);
+  renderClayMore(R);
+  labSlider.draw(S.labK);
+  claySlider.draw(S.k0, useClay?R.best.k:S.k0);
+  save();
+}
+/* ---------- view mode: auto-detect phones, or force desktop / phone ---------- */
+const phoneMQ = matchMedia('(max-width: 700px)');
+let VIEW='auto';
+try{ VIEW = localStorage.getItem('claypit-view') || 'auto'; }catch(e){}
+function isPhone(){ return VIEW==='phone' || (VIEW==='auto' && phoneMQ.matches); }
+function applyView(){
+  document.documentElement.classList.toggle('phone', isPhone());
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.view===VIEW));
+  document.getElementById('view-note').textContent = VIEW==='auto' ? `(showing ${phoneMQ.matches?'phone':'desktop'} layout)` : '';
+}
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{
+  VIEW=b.dataset.view; try{ localStorage.setItem('claypit-view', VIEW); }catch(e){}
+  applyView(); refreshActive();
+});
+phoneMQ.addEventListener('change', ()=>{ applyView(); refreshActive(); });
+
+/* ---------- tabs ---------- */
+var ACTIVE = (location.hash||'').replace('#','');
+if(!['clay','leather','paper'].includes(ACTIVE)){ try{ ACTIVE = localStorage.getItem('claypit-tab') || 'clay'; }catch(e){ ACTIVE='clay'; } }
+if(!['clay','leather','paper'].includes(ACTIVE)) ACTIVE='clay';
+const MODULES = { clay: ()=>update() }; // leather and paper register themselves below
+function refreshActive(){ (MODULES[ACTIVE]||update)(); }
+function showTab(t){
+  ACTIVE=t;
+  document.querySelectorAll('.tabs button').forEach(b=>{ const on=b.dataset.tab===t; b.setAttribute('aria-selected', on); b.tabIndex=on?0:-1; });
+  document.querySelectorAll('.tabpanel').forEach(p=>p.hidden = p.id!=='tab-'+t);
+  try{ localStorage.setItem('claypit-tab', t); }catch(e){}
+  if(location.hash!=='#'+t) history.replaceState(null,'','#'+t);
+  refreshActive();
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+addEventListener('hashchange', ()=>{ const t=location.hash.replace('#',''); if(['clay','leather','paper'].includes(t) && t!==ACTIVE) showTab(t); });
+
+/* pinned phone bar, shared by all tabs */
+function setMbar(yes, what, big, split){
+  const mb=document.getElementById('mbar');
+  mb.className='mbar '+(yes?'yes':'no');
+  mb.innerHTML = `<div class="mv"><span class="tag">${yes?'Burn '+what:'Skip '+what}</span><span class="big num">${big}</span></div>
+    <div class="split">${split.filter(([,n])=>n>0).map(([ic,n])=>`<span><img class="px" src="${IC[ic]}" alt="">${fmt(n)}</span>`).join('')}</div>`;
+}
+document.addEventListener('click', ()=>{ const t=document.querySelector('.chart-box .tip'); if(t) t.hidden=true; });
+
+applyView();
+renderControls();
+update();
+{ // info tooltip: hover or focus on desktop, tap to toggle on touch
+  const b=document.getElementById('clay-info-b'), p=document.getElementById('clay-info');
+  const show=v=>{ p.hidden=!v; b.setAttribute('aria-expanded', v); };
+  let pinned=false;
+  b.addEventListener('mouseenter',()=>show(true));
+  b.addEventListener('mouseleave',()=>{ if(!pinned) show(false); });
+  b.addEventListener('focus',()=>show(true));
+  b.addEventListener('blur',()=>{ pinned=false; show(false); });
+  b.addEventListener('click',()=>{ pinned=!pinned; show(pinned); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ pinned=false; show(false); } });
+}
+addEventListener('resize', ()=>refreshActive());
+</script>
+__BURN_TABS__
