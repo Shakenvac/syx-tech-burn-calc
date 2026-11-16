@@ -180,7 +180,10 @@ details.notes ul{padding-left:18px;margin:8px 0 0;display:grid;gap:4px;max-width
 .ctl-head.has-race label{flex:0 1 auto}
 .ctl-head.has-race .vb{margin-right:auto}
 .vtip .rrow{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.82rem}
-.vtip .rrow img{width:24px;height:24px}
+.vtip .rrow img,.vtip .rrow .ricon{width:24px;height:24px;flex:none}
+.vtip:has(.rrow){max-width:min(360px, calc(100vw - 24px))}
+.vtip .rrow>span{flex:none}
+.vtip .rkey{border-top:1px solid var(--line);margin-top:6px;padding-top:4px}
 .vtip .rrow .rn{font-family:var(--f-body);min-width:76px}
 .vtip .rrow .rm{min-width:42px;font-weight:600}
 .vtip .rf{color:var(--muted)} .vtip .rf.neg{color:var(--bad)}

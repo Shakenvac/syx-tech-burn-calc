@@ -600,8 +600,8 @@ MODULES.paper = paperUpdate;
     const inp=document.getElementById(id); if(!inp) continue;
     const head=inp.closest('.ctl').querySelector('.ctl-head'), lab=head.querySelector('label');
     const rows=[...RACES].sort((a,b)=>b[2][k]-a[2][k] || b[3][k]-a[3][k]).map(([ic,name,m,f])=>
-      `<span class="rrow"><img class="px" src="${IC[ic]}" alt=""><span class="rn">${name}:</span><span class="rm">×${m[k].toFixed(2)}</span><span class="rf ${f[k]>0?'':'neg'}">(${Math.round(f[k]*100)}%)</span></span>`).join('');
-    const tip=`<b class="h">${job}: race bonuses</b>${rows}<small>Multiplier, then work fulfillment in brackets: how much that race enjoys the job (higher is happier, negative means they resent it).</small>`;
+      `<span class="rrow"><img class="px" src="${IC[ic]}" alt=""><span class="rn">${name}:</span><span class="rm">×${m[k].toFixed(2)}</span><span class="rf ${f[k]<0?'neg':''}">(${Math.round(f[k]*100)}%)</span></span>`).join('');
+    const tip=`<b class="h">${job}: race bonuses</b>${rows}<span class="rrow rkey"><span class="ricon"></span><span class="rn">Race:</span><span class="rm">×Multiplier</span><span class="rf">(Fulfillment)</span></span>`;
     head.classList.add('has-race');
     lab.insertAdjacentHTML('afterend', `<span class="vb n" tabindex="0" role="img" aria-label="${job} race bonuses" data-tip="${tip.replace(/"/g,'&quot;')}">i</span>`);
   }
