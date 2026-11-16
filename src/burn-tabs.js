@@ -582,4 +582,29 @@ MODULES.paper = paperUpdate;
   ed.oninput=()=>{ S.ed=+ed.value; edo.textContent='×'+S.ed.toFixed(2); save(); refreshActive(); };
 }
 
+/* ---------- race tooltips on every race-bonus slider ----------
+   Multiplier: the race's ROOM_...>MUL boost. Fulfillment: the race's PREFERRED > WORK value,
+   or the room's own FULFILLMENT default when the race doesn't list it (init/race, init/room). */
+{
+  const RACES = [ // [icon, name, multipliers, fulfillments]
+    ['race_human',     'Human',     {lab:1.25,clay:1,   lib:1.25,adm:1.25,hun:1,  aur:1,   pap:1,   wood:1  }, {lab:2,   clay:-2, lib:2,   adm:.75,hun:.75,aur:0,   pap:.5, wood:-2 }],
+    ['race_garthimi',  'Garthimi',  {lab:0.8, clay:1.25,lib:0.6, adm:0.6, hun:1.2,aur:0.75,pap:0.75,wood:1  }, {lab:.75, clay:0,  lib:.75, adm:.5, hun:4,  aur:-.5, pap:.5, wood:-1 }],
+    ['race_cretonian', 'Cretonian', {lab:1,   clay:1,   lib:1,   adm:1,   hun:1,  aur:1,   pap:0.8, wood:1  }, {lab:.75, clay:0,  lib:.75, adm:.75,hun:-4, aur:0,   pap:.5, wood:-2 }],
+    ['race_dondorian', 'Dondorian', {lab:1,   clay:1.15,lib:1,   adm:1,   hun:1,  aur:0.85,pap:1.2, wood:1  }, {lab:.5,  clay:-2, lib:.5,  adm:.75,hun:1,  aur:0,   pap:1,  wood:-2 }],
+    ['race_amevia',    'Amevia',    {lab:1,   clay:1.2, lib:1,   adm:1,   hun:1,  aur:0.8, pap:1,   wood:1  }, {lab:1,   clay:.5, lib:.75, adm:.5, hun:.25,aur:0,   pap:.25,wood:-2 }],
+    ['race_tilapi',    'Tilapi',    {lab:1,   clay:0.75,lib:1,   adm:1,   hun:1.2,aur:1.2, pap:1,   wood:1.4}, {lab:.75, clay:-10,lib:.75, adm:.5, hun:3,  aur:1.25,pap:.5, wood:.25}],
+  ];
+  const JOBS = {rl:['lab','Laboratory'], rm:['clay','Claypit'], lrl:['lib','Library'], lrh:['hun','Hunter'],
+                lrp:['aur','Auroch pen'], pra:['adm','Administration'], prs:['pap','Paper workshop'], prw:['wood','Woodcutter']};
+  for(const [id,[k,job]] of Object.entries(JOBS)){
+    const inp=document.getElementById(id); if(!inp) continue;
+    const head=inp.closest('.ctl').querySelector('.ctl-head'), lab=head.querySelector('label');
+    const rows=[...RACES].sort((a,b)=>b[2][k]-a[2][k] || b[3][k]-a[3][k]).map(([ic,name,m,f])=>
+      `<span class="rrow"><img class="px" src="${IC[ic]}" alt=""><span class="rn">${name}:</span><span class="rm">×${m[k].toFixed(2)}</span><span class="rf ${f[k]>0?'':'neg'}">(${Math.round(f[k]*100)}%)</span></span>`).join('');
+    const tip=`<b class="h">${job}: race bonuses</b>${rows}<small>Multiplier, then work fulfillment in brackets: how much that race enjoys the job (higher is happier, negative means they resent it).</small>`;
+    head.classList.add('has-race');
+    lab.insertAdjacentHTML('afterend', `<span class="vb n" tabindex="0" role="img" aria-label="${job} race bonuses" data-tip="${tip.replace(/"/g,'&quot;')}">i</span>`);
+  }
+}
+
 showTab(ACTIVE);

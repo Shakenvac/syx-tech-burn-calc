@@ -66,6 +66,13 @@ ICONS = {
     'cl_cold':      ('icon/32/SEASONS.png', 32, 3),
     'cl_temperate': ('icon/32/SEASONS.png', 32, 0),
     'cl_hot':       ('icon/32/SEASONS.png', 32, 1),
+    # playable races (init/race/*.txt ICON_SMALL: 24->race->Name->0)
+    'race_human': ('icon/24/race/Human.png', 24, 0),
+    'race_garthimi': ('icon/24/race/Garthimi.png', 24, 0),
+    'race_cretonian': ('icon/24/race/Cretonian.png', 24, 0),
+    'race_dondorian': ('icon/24/race/Dondorian.png', 24, 0),
+    'race_amevia': ('icon/24/race/Amevia.png', 24, 0),
+    'race_tilapi': ('icon/24/race/Tilapi.png', 24, 0),
 }
 
 out = {}
