@@ -24,12 +24,16 @@ The page is a single self-contained HTML file. To rebuild it after editing the s
 python src/build.py
 ```
 
-This writes `index.html` (for GitHub Pages) and `clay-calculator.html` from:
+This writes `index.html` (for GitHub Pages, with the page-view counter) and `clay-calculator.html` (without it) from:
 
 - `src/clay-calculator.template.html`: page layout, styles and the Clay tab
 - `src/burn-tabs.js`: the Leather and Paper tabs
 - `src/icons.json`: game icons as data URIs
 - `src/extract_icons.py`: how the icons were cut from the game's sprite sheets
+
+## Page views
+
+The public page (`index.html`) counts visits with [GoatCounter](https://www.goatcounter.com/), which uses no cookies and stores no personal data.
 
 ## Disclaimer
 
