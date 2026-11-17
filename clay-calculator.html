@@ -1239,19 +1239,23 @@ function leatherUpdate(){
   const adv = libUpAdvice(); LS.libUp = adv.worth; drawLibAdvice(adv);
   const M = leatherModel(LS);
   const none = M.ev(0,0), best = M.solve(), huntOnly = M.solve({aur:false}), aurOnly = M.solve({hunt:false});
-  const gain = best.out-none.out, yes = (best.h+best.a)>0 && gain>0.05;
-  const use = yes ? best : none, ed=S.ed;
   // Advanced Library's 100 knowledge is held out of the total while you keep it, so every total shown is net of it.
   const lc = LS.libUp ? LIB_UP_COST : 0, net = r => r.out - lc;
   const lcNote = lc ? `, after the ${LIB_UP_COST} held for Advanced Library` : '';
+  // Burning is measured against the best way to run without leather, which may make the opposite Advanced Library choice.
+  const alt = leatherModel(Object.assign({}, LS, {libUp:!LS.libUp})).ev(0,0); alt.net = alt.out - (LS.libUp ? 0 : LIB_UP_COST);
+  const altBetter = alt.net > net(none) + 1e-9, base0 = altBetter ? alt.net : net(none);
+  const altName = LS.libUp ? 'All libraries, no Advanced Library' : 'All libraries with Advanced Library';
+  const gain = net(best) - base0, yes = (best.h+best.a)>0 && gain>0.05;
+  const use = yes ? best : none, ed=S.ed;
 
   if(yes){
     const src = [best.h?`<b>${fmt(best.h)}</b> hunter${best.h>1?'s':''}`:'', best.a?`<b>${fmt(best.a)}</b> on auroch pens`:''].filter(Boolean).join(' and ');
-    renderVerdictBox(LD, true, 'Burn leather', `<span class="num">+${fmt(gain)}</span> knowledge <span class="muted" style="font-size:1rem">(${pct(gain/none.out)} over all libraries)</span>`,
+    renderVerdictBox(LD, true, 'Burn leather', `<span class="num">+${fmt(gain)}</span> knowledge <span class="muted" style="font-size:1rem">(${pct(gain/base0)} over ${altBetter ? altName.replace('All','all') : 'all libraries'})</span>`,
       `Put ${src}${best.haul?`, <b>${fmt(best.haul)}</b> hauling`:''}, and <b>${fmt(best.l)}</b> in libraries. Leather covers ${fmt(best.f*100,0)}% of what the libraries could burn.`);
   } else {
     renderVerdictBox(LD, false, 'Skip leather', `Put all <span class="num">${fmt(LS.W)}</span> workers in libraries`,
-      `No mix of hunters and auroch pens beats running the libraries without leather. All libraries gives <b class="num">${fmt(net(none))}</b> knowledge${lcNote}.`);
+      `No mix of hunters and auroch pens beats running the libraries without leather. All libraries gives <b class="num">${fmt(base0)}</b> knowledge${altBetter ? '' : lcNote}.`);
   }
   drawAlloc(LD, [
     {ic:'library', label:'Libraries', n:use.l, color:SEG.room},
@@ -1259,7 +1263,7 @@ function leatherUpdate(){
     {ic:'auroch', label:'Auroch pens', n:use.a, color:SEG.p2},
     {ic:'cart', label:'Haulers', n:use.haul, color:SEG.haul},
   ]);
-  if(ACTIVE==='leather') setMbar(yes, 'leather', yes?'+'+fmt(gain)+' knowledge':fmt(net(none))+' knowledge',
+  if(ACTIVE==='leather') setMbar(yes, 'leather', yes?'+'+fmt(gain)+' knowledge':fmt(base0)+' knowledge',
     [['library',use.l],['hunter',use.h],['auroch',use.a],['cart',use.haul]]);
 
   const lw = use.l, s = M.libS(lw);
@@ -1284,14 +1288,17 @@ function leatherUpdate(){
   }
   LD.byp.innerHTML = rows.join('');
 
-  const cols=['Option','Libraries','Hunters','Auroch hands','Haulers',lc?'Knowledge (net)':'Knowledge','vs all libraries'];
-  const opts=[['All libraries, no leather',none],['Hunters only',huntOnly],['Auroch pens only',aurOnly]];
+  const cols=['Option','Libraries','Hunters','Auroch hands','Haulers',(lc||altBetter)?'Knowledge (net)':'Knowledge','vs all libraries'];
+  for(const r of [none,huntOnly,aurOnly,best]) r.net = net(r);
+  const noneName = !altBetter ? 'All libraries, no leather' : LS.libUp ? 'All libraries with Advanced Library' : 'All libraries, no Advanced Library';
+  const opts=[[noneName,none],['Hunters only',huntOnly],['Auroch pens only',aurOnly]];
   if(best!==huntOnly && best!==aurOnly && best.h && best.a) opts.push(['Best mix',best]);
-  const top=Math.max(...opts.map(o=>o[1].out));
-  drawTable(LD.cmp, cols, opts.map(([n,r])=>({best:Math.abs(r.out-top)<1e-6, cells:[n,fmt(r.l),fmt(r.h),fmt(r.a),fmt(r.haul),fmt(net(r)),r===none?'–':pct(r.out/none.out-1)]})));
+  if(altBetter) opts.splice(1, 0, [altName, alt]);
+  const baseRow = altBetter ? alt : none, top=Math.max(...opts.map(o=>o[1].net));
+  drawTable(LD.cmp, cols, opts.map(([n,r])=>({best:Math.abs(r.net-top)<1e-6, cells:[n,fmt(r.l),fmt(r.h),fmt(r.a),fmt(r.haul),fmt(r.net),r===baseRow?'–':pct(r.net/baseRow.net-1)]})));
   LD.cmpNote = LD.cmpNote || LD.cmp.insertAdjacentElement('afterend', el('<p class="hint"></p>'));
-  LD.cmpNote.textContent = lc ? `Knowledge totals are after the ${LIB_UP_COST} knowledge held for Advanced Library while you keep it.` : '';
-  LD.cmpNote.hidden = !lc;
+  LD.cmpNote.textContent = (lc || altBetter) ? `Knowledge totals are after the ${LIB_UP_COST} knowledge held for Advanced Library on the rows that use it.` : '';
+  LD.cmpNote.hidden = !(lc || altBetter);
 
   // what more research buys
   // Research can flip the Advanced Library decision, so compare the best net totals, re-deciding it each time.
